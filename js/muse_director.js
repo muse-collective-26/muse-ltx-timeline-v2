@@ -2347,9 +2347,9 @@ class TimelineEditor {
       return { btn, sync };
     };
 
-    const t1 = makeMuseToggle("Gen Audio",    "generate_audio",  "#EB6E33");
-    const t2 = makeMuseToggle("Custom Audio", "custom_audio_on", "#EB6E33");
-    const t3 = makeMuseToggle("Motion Guide", "motion_guide_on", "#EB6E33");
+    const t1 = makeMuseToggle("Gen Audio",    "generate_audio",  "#8B5CF6");
+    const t2 = makeMuseToggle("Custom Audio", "custom_audio_on", "#8B5CF6");
+    const t3 = makeMuseToggle("Motion Guide", "motion_guide_on", "#8B5CF6");
     actionGroup.appendChild(museToggleGroup);
     // expose sync so node can refresh on load
     this._museToggles = [t1, t2, t3];
@@ -2362,8 +2362,8 @@ class TimelineEditor {
     const updateSettingsToggleStyle = () => {
       settingsToggleBtn.textContent = _museSettingsVisible ? "▲ Settings" : "▼ Settings";
       settingsToggleBtn.style.background = _museSettingsVisible ? "#2a2a2a" : "#1a1a1a";
-      settingsToggleBtn.style.color = _museSettingsVisible ? "#EB6E33" : "#666";
-      settingsToggleBtn.style.borderColor = _museSettingsVisible ? "#EB6E33" : "#333";
+      settingsToggleBtn.style.color = _museSettingsVisible ? "#8B5CF6" : "#666";
+      settingsToggleBtn.style.borderColor = _museSettingsVisible ? "#8B5CF6" : "#333";
     };
     updateSettingsToggleStyle();
     settingsToggleBtn.addEventListener("click", (e) => {
@@ -3677,14 +3677,14 @@ class TimelineEditor {
       return el;
     };
 
-    this.mainTrackLabel = createTrackLabel("MAIN", "#1e1e1e", "main", this.mainTrackEnabled, () => {
+    this.mainTrackLabel = createTrackLabel("MAIN", "#1a0d3a", "main", this.mainTrackEnabled, () => {
       this.mainTrackEnabled = !this.mainTrackEnabled;
       updateTrackIcon(this.mainTrackLabel._eyeBtn, "main", this.mainTrackEnabled);
       this.commitChanges(true);
       this.render();
     });
 
-    this.audioTrackLabel = createTrackLabel("AUDIO", "#1e1e1e", "audio", this.audioTrackEnabled, () => {
+    this.audioTrackLabel = createTrackLabel("AUDIO", "#1a0d3a", "audio", this.audioTrackEnabled, () => {
       this.audioTrackEnabled = !this.audioTrackEnabled;
       updateTrackIcon(this.audioTrackLabel._eyeBtn, "audio", this.audioTrackEnabled);
 
@@ -3726,7 +3726,7 @@ class TimelineEditor {
     inpaintToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
 
     // BG Audio track label + volume control
-    this.bgAudioTrackLabel = createTrackLabel("BG AUDIO", "#1a0f08", "bg_audio", true, () => {});
+    this.bgAudioTrackLabel = createTrackLabel("BG AUDIO", "#1a0d3a", "bg_audio", true, () => {});
     // Volume control inside label
     const volRow = document.createElement("div");
     volRow.style.cssText = "display:flex;align-items:center;gap:4px;padding:2px 4px;";
@@ -3739,7 +3739,7 @@ class TimelineEditor {
     volSlider.max = "2";
     volSlider.step = "0.05";
     volSlider.value = String(this.timeline.bgAudioVolume !== undefined ? this.timeline.bgAudioVolume : 1.0);
-    volSlider.style.cssText = "flex:1;height:12px;cursor:pointer;accent-color:#EB6E33;";
+    volSlider.style.cssText = "flex:1;height:12px;cursor:pointer;accent-color:#8B5CF6;";
     const volDisplay = document.createElement("span");
     volDisplay.style.cssText = "font-size:9px;color:#aac;min-width:28px;text-align:right;";
     volDisplay.textContent = volSlider.value;
@@ -3760,7 +3760,7 @@ class TimelineEditor {
     volRow.appendChild(volDisplay);
     this.bgAudioTrackLabel.appendChild(volRow);
 
-    this.motionTrackLabel = createTrackLabel("IC-LoRA Video", "#1e1e1e", "motion", this.motionTrackEnabled, () => {
+    this.motionTrackLabel = createTrackLabel("IC-LoRA Video", "#1a0d3a", "motion", this.motionTrackEnabled, () => {
       this.motionTrackEnabled = !this.motionTrackEnabled;
       updateTrackIcon(this.motionTrackLabel._eyeBtn, "motion", this.motionTrackEnabled);
 
@@ -5920,18 +5920,30 @@ class TimelineEditor {
       }
     }
 
-    // Render Track Backgrounds
-    this.ctx.fillStyle = "#121212"; // Image track bg
+    // Render Track Backgrounds — Muse purple palette
+    this.ctx.fillStyle = "#0d0818";
     this.ctx.fillRect(0, RULER_HEIGHT, width, this.blockHeight);
 
-    this.ctx.fillStyle = "#141414"; // Audio track bg
+    this.ctx.fillStyle = "#0f0a1e";
     this.ctx.fillRect(0, RULER_HEIGHT + this.blockHeight, width, this.audioTrackHeight);
 
-    this.ctx.fillStyle = "#131a13"; // BG Audio track bg (slightly different green tint)
+    this.ctx.fillStyle = "#0c0c1a";
     this.ctx.fillRect(0, RULER_HEIGHT + this.blockHeight + this.audioTrackHeight, width, this.bgAudioTrackHeight);
 
-    this.ctx.fillStyle = "#121212"; // Motion track bg
+    this.ctx.fillStyle = "#0d0818";
     this.ctx.fillRect(0, RULER_HEIGHT + this.blockHeight + this.audioTrackHeight + this.bgAudioTrackHeight, width, this.motionTrackHeight);
+
+    // Muse Collective watermark — top-right of timeline canvas
+    {
+      const wm = "MUSE COLLECTIVE";
+      this.ctx.save();
+      this.ctx.font = "bold 11px 'Arial', sans-serif";
+      this.ctx.fillStyle = "rgba(139, 92, 246, 0.18)";
+      this.ctx.textAlign = "right";
+      this.ctx.fillText(wm, width - 8, RULER_HEIGHT - 6);
+      this.ctx.textAlign = "left";
+      this.ctx.restore();
+    }
 
 
 
@@ -6963,10 +6975,10 @@ class TimelineEditor {
           const outlineColor = isSelected ? "#fff" : null;
           // Use purple/blue tint to distinguish from lip-sync audio (green)
           this.ctx.save();
-          this.ctx.fillStyle = isSelected ? "#2a1a0d" : "#1a0f08";
+          this.ctx.fillStyle = isSelected ? "#2d1b69" : "#1a0d3a";
           this.ctx.fillRect(startX, bgTrackY + 2, pxWidth, this.bgAudioTrackHeight - 3);
           if (seg.waveformPeaks && pxWidth > 0) {
-            this.ctx.fillStyle = isSelected ? "rgba(235, 110, 51, 0.6)" : "rgba(235, 110, 51, 0.3)";
+            this.ctx.fillStyle = isSelected ? "rgba(139, 92, 246, 0.6)" : "rgba(139, 92, 246, 0.3)";
             const startRatio = seg.trimStart / seg.audioDurationFrames;
             const endRatio = (seg.trimStart + seg.length) / seg.audioDurationFrames;
             const peakCount = seg.waveformPeaks.length;
@@ -6982,7 +6994,7 @@ class TimelineEditor {
               }
             }
           }
-          const strokeColor = outlineColor || (isSelected ? "#EB6E33" : "#000");
+          const strokeColor = outlineColor || (isSelected ? "#a78bfa" : "#3b1f7a");
           this.ctx.strokeStyle = strokeColor;
           this.ctx.lineWidth = isSelected ? 2 : 1.5;
           this.ctx.strokeRect(startX, bgTrackY + 2, pxWidth, this.bgAudioTrackHeight - 3);
@@ -7252,7 +7264,7 @@ class TimelineEditor {
 
 
   drawAudioSegmentVisuals(ctx, seg, isSelected, yOffset, trackHeight, startX, pxWidth, outlineColor = null, showHandles = true) {
-    ctx.fillStyle = isSelected ? "#2a4a3a" : "#1a2a1a";
+    ctx.fillStyle = isSelected ? "#2d1b69" : "#1a0d3a";
     ctx.fillRect(startX, yOffset + 2, pxWidth, trackHeight - 3);
 
     if (seg.waveformPeaks && pxWidth > 0) {
@@ -11602,6 +11614,10 @@ app.registerExtension({
             }
           }
         }
+
+        // Muse Collective brand colours
+        this.color = "#2D1B69";
+        this.bgcolor = "#0d0818";
 
         // Set default width to be wider on creation (approx 2.5x default ~220px)
         this.size[0] = 1375;
