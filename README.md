@@ -54,7 +54,7 @@ Search for **Muse Collective LTX Timeline** and click Install.
 ### Manual
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/musecollective/muse-ltx-timeline
+git clone https://github.com/muse-collective-26/muse-ltx-timeline
 ```
 Then restart ComfyUI.
 
