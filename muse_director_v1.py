@@ -443,41 +443,37 @@ def _build_guide_data(tdata: dict, start_frame: int, duration_frames: int,
     return guide_data, derived_w, derived_h
 
 
-def _apply_guide(pos, neg, vae, video_latent, guide_data, model):
-    """Apply appended keyframe guidance (replicates LTXDirectorGuide behaviour)."""
-    from comfy_extras.nodes_lt import LTXVAddGuide
-
-    images = guide_data.get("images", [])
-    insert_frames = guide_data.get("insert_frames", [])
-    strengths = guide_data.get("strengths", [])
-    frame_rate = guide_data.get("frame_rate", 24.0)
-
-    if not images:
+def _apply_guide(pos, neg, vae, video_latent, guide_data, model,
+                 motion_guide_data=None, ic_lora_name="None", ic_lora_strength=1.0):
+    """Apply guide data using LTXDirectorGuide (same as V7)."""
+    try:
+        import nodes as _nodes
+        DirectorGuide = _nodes.NODE_CLASS_MAPPINGS["LTXDirectorGuide"]
+    except Exception as exc:
+        log.warning("[MuseDirector] Guide application failed (LTXDirectorGuide not found): %s", exc)
         return pos, neg, video_latent, model
 
-    lat = video_latent
-    pos_out, neg_out = pos, neg
+    images = (guide_data or {}).get("images", [])
+    if not images and not (motion_guide_data and motion_guide_data.get("segments")):
+        return pos, neg, video_latent, model
 
-    for img_tensor, insert_frame, strength in zip(images, insert_frames, strengths):
-        if strength == 0.0:
-            continue
-        try:
-            result = LTXVAddGuide.add_guide(
-                positive=pos_out,
-                negative=neg_out,
-                vae=vae,
-                image=img_tensor,
-                latent=lat,
-                frame_idx=insert_frame,
-                strength=float(strength),
-                noise_augmentation=0.0,
-            )
-            if result and len(result) >= 3:
-                pos_out, neg_out, lat = result[0], result[1], result[2]
-        except Exception as exc:
-            log.warning("[MuseDirector] Guide application failed: %s", exc)
-
-    return pos_out, neg_out, lat, model
+    try:
+        result = DirectorGuide.execute(
+            positive=pos,
+            negative=neg,
+            vae=vae,
+            latent=video_latent,
+            guide_data=guide_data,
+            motion_guide_data=motion_guide_data,
+            model=model,
+            ic_lora_name=ic_lora_name,
+            ic_lora_strength=ic_lora_strength,
+        )
+        pos_out, neg_out, lat_out, model_out, _ = result
+        return pos_out, neg_out, lat_out, model_out
+    except Exception as exc:
+        log.warning("[MuseDirector] Guide application failed: %s", exc)
+        return pos, neg, video_latent, model
 
 
 def _crop_conditioning(pos, neg, latent):
@@ -527,11 +523,11 @@ def _build_audio_latent(audio_vae, audio_out, ltxv_length, frame_rate,
         raise ValueError("Encoded audio latent is empty.")
 
     B, C, F_len, H_len = latent_samples.shape
-    # All-ones gap mask: entire duration is available for generation
-    # (V7's override logic will force all-ones anyway when generate_audio=True)
-    gap_mask = torch.ones((B, F_len, H_len), dtype=torch.float32, device=latent_samples.device)
+    # 0 = preserve (lip-sync to this speech), 1 = generate new audio
+    # When generate_audio=True the caller overwrites this with all-ones anyway
+    gap_mask = torch.zeros((B, F_len, H_len), dtype=torch.float32, device=latent_samples.device)
 
-    log.info("[MuseDirector] Generated custom audio latent with dynamic noise mask.")
+    log.info("[MuseDirector] Encoded custom audio latent — noise_mask=zeros (preserve for lip-sync).")
     return {"samples": latent_samples, "type": "audio", "noise_mask": gap_mask}
 
 
@@ -625,6 +621,8 @@ class MuseDirectorSamplerV1:
                                                   "tooltip": "LTX generates ambient/sfx audio from [SOUNDS] prompts."}),
                 "custom_audio_on":  ("BOOLEAN", {"default": False,
                                                   "tooltip": "Use audio file(s) from the AUDIO timeline track."}),
+                "lipsync":          ("BOOLEAN", {"default": True,
+                                                  "tooltip": "Sync mouth movements to custom audio. Requires Custom Audio ON and talking head LoRA."}),
                 "motion_guide_on":  ("BOOLEAN", {"default": True,
                                                   "tooltip": "Use motion guide segments from the timeline."}),
 
@@ -655,7 +653,8 @@ class MuseDirectorSamplerV1:
                 "timeline_ui": ("STRING", {"default": ""}),
             },
             "optional": {
-                "bg_audio": ("AUDIO",),
+                "bg_audio":    ("AUDIO",),
+                "base_model":  ("MODEL", {"tooltip": "Base model without talking-head LoRA. Connect the UNETLoader output directly here so the ambient audio pass generates sounds without speech."}),
             },
         }
 
@@ -678,13 +677,13 @@ class MuseDirectorSamplerV1:
         global_prompt, guide_strength, epsilon,
         frame_rate, display_mode, custom_width, custom_height,
         resize_method, divisible_by, img_compression,
-        generate_audio, custom_audio_on, motion_guide_on,
+        generate_audio, custom_audio_on, lipsync, motion_guide_on,
         chunk_duration_seconds, auto_chunk_threshold,
         carry_frames, carry_strength, crossfade_frames,
         ic_lora_name, ic_lora_strength,
         stage1_steps, stage2_steps, stage2_denoise, cfg,
         seed, control_after_generate, filename_prefix,
-        bg_volume=1.0, bg_audio=None, timeline_ui="",
+        bg_volume=1.0, bg_audio=None, base_model=None, timeline_ui="",
     ):
         if not isinstance(ic_lora_name, str):
             ic_lora_name = "None"
@@ -822,28 +821,33 @@ class MuseDirectorSamplerV1:
                 custom_audio_on, generate_audio,
             )
 
-            # Force all-ones mask when generate_audio is on
-            if generate_audio and "samples" in audio_latent:
+            # Decide noise_mask: 0=preserve audio (lip-sync), 1=generate audio here
+            if "samples" in audio_latent:
                 s = audio_latent["samples"]
-                ones = torch.ones(s.shape[0], s.shape[2], s.shape[3],
-                                  dtype=torch.float32, device=s.device)
-                audio_latent = {**audio_latent, "noise_mask": ones}
-                log.info("[MuseDirector] generate_audio=True — all-ones mask.")
+                if custom_audio_on and lipsync:
+                    # Preserve the encoded speech — model syncs lips to it
+                    mask = torch.zeros(s.shape[0], s.shape[2], s.shape[3], dtype=torch.float32, device=s.device)
+                    log.info("[MuseDirector] Lipsync ON — zeros mask, model preserves speech.")
+                else:
+                    # Generate audio (no custom audio, or custom audio with lipsync off)
+                    mask = torch.ones(s.shape[0], s.shape[2], s.shape[3], dtype=torch.float32, device=s.device)
+                    log.info("[MuseDirector] Lipsync OFF / no custom audio — ones mask, LTX generates.")
+                audio_latent = {**audio_latent, "noise_mask": mask}
 
             # ── Stage 1 ─────────────────────────────────────────────────────
+            # LTXVConditioning first, then DirectorGuide (same order as V7)
             zero_neg = _zero_out_conditioning(positive)
-            pos1, neg1 = _unpack(LTXVConditioning.execute(positive, zero_neg, frame_rate))
+            cond_pos, cond_neg = _unpack(LTXVConditioning.execute(positive, zero_neg, frame_rate))
 
-            # Apply image guides
-            pos1, neg1, lat1 = pre_latent, None, pre_latent
+            pos1, neg1, lat1 = cond_pos, cond_neg, pre_latent
             try:
                 pos1, neg1, lat1, patched_model = _apply_guide(
-                    positive, zero_neg, vae, pre_latent, guide_data, patched_model,
+                    cond_pos, cond_neg, vae, pre_latent, guide_data, patched_model,
+                    ic_lora_name=ic_lora_name, ic_lora_strength=ic_lora_strength,
                 )
-                pos1, neg1 = _unpack(LTXVConditioning.execute(pos1, neg1, frame_rate))
             except Exception as exc:
                 log.warning("[MuseDirector] Guide application failed, using plain conditioning: %s", exc)
-                pos1, neg1 = _unpack(LTXVConditioning.execute(positive, zero_neg, frame_rate))
+                pos1, neg1 = cond_pos, cond_neg
                 lat1 = pre_latent
 
             # Reference-frame lock
@@ -908,14 +912,15 @@ class MuseDirectorSamplerV1:
             # ── Stage 2 ─────────────────────────────────────────────────────
             vid_up = _unpack(LTXVLatentUpsampler.execute(vid1, spatial_upscaler, vae))[0]
 
+            # Stage 2: DirectorGuide only, no LTXVConditioning (conditioning already baked in from S1)
             try:
-                pos2, neg2, lat2, _, = _apply_guide(
+                pos2, neg2, lat2, _ = _apply_guide(
                     pos1_c, neg1_c, vae, vid_up, guide_data, patched_model,
+                    ic_lora_name="None", ic_lora_strength=1.0,
                 )[:4]
-                pos2, neg2 = _unpack(LTXVConditioning.execute(pos2, neg2, frame_rate))
             except Exception as exc:
                 log.warning("[MuseDirector] Stage2 guide failed: %s", exc)
-                pos2, neg2 = _unpack(LTXVConditioning.execute(pos1_c, neg1_c, frame_rate))
+                pos2, neg2 = pos1_c, neg1_c
                 lat2 = vid_up
 
             # Reference-frame lock Stage2
@@ -1013,6 +1018,70 @@ class MuseDirectorSamplerV1:
             cat_so_far = torch.cat(all_frames, dim=0)
             live_pixel_frames = cat_so_far[-carry_frames:].clone().cpu()
 
+            # ── Ambient-only pass (all three audio buttons on) ────────────────
+            # When gen=ON + custom=ON + lipsync=ON the main pass used zeros mask
+            # (speech preserved for lipsync). Run a second lightweight pass with
+            # ones mask to generate ambient/SFX audio separately, then mix under
+            # the clean custom speech — no echo.
+            ambient_wav = None
+            if generate_audio and custom_audio_on and lipsync and audio_vae is not None:
+                try:
+                    inner_vae_a = getattr(audio_vae, "first_stage_model", audio_vae)
+                    num_amb_latents = inner_vae_a.num_of_latents_from_frames(ltxv_len, float(frame_rate))
+                    z_ch = audio_vae.latent_channels
+                    a_freq = inner_vae_a.latent_frequency_bins
+                    amb_audio_samples = torch.zeros(
+                        (1, z_ch, num_amb_latents, a_freq),
+                        device=mm.intermediate_device(),
+                    )
+                    amb_noise_mask = torch.ones(
+                        (1, num_amb_latents, a_freq),
+                        dtype=torch.float32, device=mm.intermediate_device(),
+                    )
+                    amb_audio_lat = {"samples": amb_audio_samples, "type": "audio", "noise_mask": amb_noise_mask}
+                    # Use actual video latent so the model has visual context for sound generation
+                    # Add a video noise_mask of ones so the video is treated as fully generated (not locked)
+                    vid_ones = torch.ones(
+                        (pre_latent["samples"].shape[0], pre_latent["samples"].shape[2],
+                         pre_latent["samples"].shape[3], pre_latent["samples"].shape[4]),
+                        dtype=torch.float32, device=pre_latent["samples"].device,
+                    )
+                    amb_vid_lat = {"samples": pre_latent["samples"].clone(), "noise_mask": vid_ones}
+                    av_amb = _unpack(LTXVConcatAVLatent.execute(amb_vid_lat, amb_audio_lat))[0]
+                    # Build conditioning from [SOUNDS] content only — strips [SPEECH] so the
+                    # model generates ambient audio without adding speech on top
+                    import re as _re
+                    all_prompts = [global_prompt] + (local_prompts if isinstance(local_prompts, list) else [local_prompts])
+                    sounds_parts = []
+                    for _p in all_prompts:
+                        for _m in _re.findall(r'\[SOUNDS?\][^\[]*', _p, _re.IGNORECASE):
+                            sounds_parts.append(_m.strip())
+                    amb_text = ' '.join(sounds_parts) if sounds_parts else "ambient background sounds"
+                    amb_cond = clip.encode_from_tokens_scheduled(clip.tokenize(amb_text))
+                    amb_zero_neg = _zero_out_conditioning(amb_cond)
+                    amb_cond_pos, amb_cond_neg = _unpack(LTXVConditioning.execute(amb_cond, amb_zero_neg, frame_rate))
+                    # Use base_model (no LoRA) if wired, otherwise fall back to the main model
+                    amb_model = base_model if base_model is not None else model
+                    amb_guider = _unpack(CFGGuider.execute(amb_model, amb_cond_pos, amb_cond_neg, cfg))[0]
+                    amb_sampler = _unpack(KSamplerSelect.execute("euler"))[0]
+                    amb_steps = stage1_steps
+                    amb_sigmas = _unpack(BasicScheduler.execute(amb_model, "linear_quadratic", amb_steps, 1.0))[0]
+                    amb_noise = _unpack(RandomNoise.execute(chunk_seed + 99999))[0]
+                    amb_out, _ = _unpack(SamplerCustomAdvanced.execute(amb_noise, amb_guider, amb_sampler, amb_sigmas, av_amb))
+                    _, amb_aud = _unpack(LTXVSeparateAVLatent.execute(amb_out))
+                    if isinstance(amb_aud, dict) and "samples" in amb_aud:
+                        amb_decoded = inner_vae_a.decode(amb_aud["samples"].cpu().float())
+                        if amb_decoded.shape[1] == 1:
+                            amb_decoded = amb_decoded.expand(-1, 2, -1)
+                        ambient_wav = amb_decoded.cpu().float()
+                        amb_sr = getattr(inner_vae_a, "output_sample_rate", 44100)
+                        if amb_sr != 44100:
+                            import torchaudio as _ta
+                            ambient_wav = _ta.functional.resample(ambient_wav, amb_sr, 44100)
+                        log.info("[MuseDirector] Ambient pass decoded: shape %s", list(ambient_wav.shape))
+                except Exception as exc:
+                    log.warning("[MuseDirector] Ambient pass failed: %s", exc)
+
             # ── Audio source selection ────────────────────────────────────────
             decoded_wav = None
             if generate_audio and has_audio and isinstance(aud1, dict) and "samples" in aud1:
@@ -1037,7 +1106,17 @@ class MuseDirectorSamplerV1:
             custom_wav = combined_audio.get("waveform") if (custom_audio_on and isinstance(combined_audio, dict)) else None
             audio_sr = combined_audio.get("sample_rate", 44100) if isinstance(combined_audio, dict) else 44100
 
-            if decoded_wav is not None and custom_wav is not None:
+            if generate_audio and custom_audio_on and lipsync and custom_wav is not None:
+                # All three on: clean custom speech + ambient from separate pass
+                if ambient_wav is not None:
+                    min_len = min(ambient_wav.shape[-1], custom_wav.shape[-1])
+                    mixed = custom_wav[..., :min_len] + ambient_wav[..., :min_len] * 0.25
+                    combined_audio = {"waveform": mixed, "sample_rate": audio_sr}
+                    log.info("[MuseDirector] Audio: lipsync speech + ambient layer")
+                else:
+                    combined_audio = {"waveform": custom_wav, "sample_rate": audio_sr}
+                    log.info("[MuseDirector] Audio: lipsync speech only (ambient pass failed)")
+            elif decoded_wav is not None and custom_wav is not None:
                 min_len = min(decoded_wav.shape[-1], custom_wav.shape[-1])
                 mixed = decoded_wav[..., :min_len] + custom_wav[..., :min_len]
                 combined_audio = {"waveform": mixed, "sample_rate": audio_sr}

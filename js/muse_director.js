@@ -12,7 +12,7 @@ const HANDLE_HIT_PX = 14;
 const MIN_SEGMENT_LENGTH = 6;
 const MAX_THUMBNAIL_DIM = 512; // Increased to maintain quality for taller images
 
-const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio", "inpaint_audio", "use_custom_motion", "override_audio",
+const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio", "lipsync", "use_custom_motion", "override_audio",
   // Muse-specific hidden widgets (always hidden — managed by timeline internally)
   "start_second", "end_second", "duration_seconds", "start_frame", "end_frame", "duration_frames", "epsilon", "timeline_ui",
   // Duplicate prompt box — timeline has its own Global Prompt text area
@@ -681,7 +681,7 @@ function parseInitial(jsonStr) {
     globalPropHeight: 60,
     showFilenames: true,
     overrideAudio: false,
-    inpaint_audio: true,
+    lipsync: true,
     retakeMode: false,
     retakeStart: 24,
     retakeLength: 48,
@@ -703,7 +703,7 @@ function parseInitial(jsonStr) {
       if (p.globalPropHeight !== undefined) parsed.globalPropHeight = p.globalPropHeight;
       if (p.showFilenames !== undefined) parsed.showFilenames = p.showFilenames;
       if (p.overrideAudio !== undefined) parsed.overrideAudio = p.overrideAudio;
-      if (p.inpaint_audio !== undefined) parsed.inpaint_audio = p.inpaint_audio;
+      if (p.lipsync !== undefined) parsed.lipsync = p.lipsync;
       if (p.retakeMode !== undefined) parsed.retakeMode = p.retakeMode;
       if (p.retakeStart !== undefined) parsed.retakeStart = p.retakeStart;
       if (p.retakeLength !== undefined) parsed.retakeLength = p.retakeLength;
@@ -896,14 +896,14 @@ class TimelineEditor {
     if (this.timeline.overrideAudio !== undefined) {
       this.node.properties.overrideAudio = this.timeline.overrideAudio;
     }
-    if (this.timeline.inpaint_audio !== undefined) {
-      this.node.properties.inpaint_audio = this.timeline.inpaint_audio;
+    if (this.timeline.lipsync !== undefined) {
+      this.node.properties.lipsync = this.timeline.lipsync;
     }
 
     // Sync widgets to match the timeline data
-    const inpaintWidget = this.node.widgets?.find(w => w.name === "inpaint_audio");
-    if (inpaintWidget && this.timeline.inpaint_audio !== undefined) {
-      inpaintWidget.value = this.timeline.inpaint_audio;
+    const inpaintWidget = this.node.widgets?.find(w => w.name === "lipsync");
+    if (inpaintWidget && this.timeline.lipsync !== undefined) {
+      inpaintWidget.value = this.timeline.lipsync;
     }
     const overrideWidget = this.node.widgets?.find(w => w.name === "override_audio");
     if (overrideWidget && this.timeline.overrideAudio !== undefined) {
@@ -2419,58 +2419,58 @@ class TimelineEditor {
       }
     });
 
-    const inpaintToggleBtn = document.createElement("button");
-    inpaintToggleBtn.className = "pr-btn";
-    inpaintToggleBtn.style.padding = "4px 0px";
-    inpaintToggleBtn.style.fontSize = "9px";
-    inpaintToggleBtn.style.lineHeight = "1";
-    inpaintToggleBtn.style.marginRight = "0px";
-    inpaintToggleBtn.style.marginTop = "8px"; // Adjust this value to fine-tune spacing between the title and button
-    inpaintToggleBtn.style.width = "72px";
-    inpaintToggleBtn.style.whiteSpace = "nowrap";
-    inpaintToggleBtn.style.textAlign = "center";
-    inpaintToggleBtn.style.justifyContent = "center";
-    inpaintToggleBtn.style.alignItems = "center";
-    inpaintToggleBtn.style.gap = "0px";
-    inpaintToggleBtn.style.boxSizing = "border-box";
-    inpaintToggleBtn.style.borderRadius = "2px";
-    inpaintToggleBtn.textContent = "Inpaint: ON";
-    inpaintToggleBtn.title = "Toggle Audio Inpainting in Gaps";
+    const lipsyncToggleBtn = document.createElement("button");
+    lipsyncToggleBtn.className = "pr-btn";
+    lipsyncToggleBtn.style.padding = "4px 0px";
+    lipsyncToggleBtn.style.fontSize = "9px";
+    lipsyncToggleBtn.style.lineHeight = "1";
+    lipsyncToggleBtn.style.marginRight = "0px";
+    lipsyncToggleBtn.style.marginTop = "8px"; // Adjust this value to fine-tune spacing between the title and button
+    lipsyncToggleBtn.style.width = "72px";
+    lipsyncToggleBtn.style.whiteSpace = "nowrap";
+    lipsyncToggleBtn.style.textAlign = "center";
+    lipsyncToggleBtn.style.justifyContent = "center";
+    lipsyncToggleBtn.style.alignItems = "center";
+    lipsyncToggleBtn.style.gap = "0px";
+    lipsyncToggleBtn.style.boxSizing = "border-box";
+    lipsyncToggleBtn.style.borderRadius = "2px";
+    lipsyncToggleBtn.textContent = "Lipsync: ON";
+    lipsyncToggleBtn.title = "Toggle lip-sync — syncs mouth to custom audio (requires talking head LoRA)";
 
     this.updateInpaintToggleStyle = (isOn) => {
-      inpaintToggleBtn.textContent = isOn ? "Inpaint: ON" : "Inpaint: OFF";
+      lipsyncToggleBtn.textContent = isOn ? "Lipsync: ON" : "Lipsync: OFF";
       if (isOn) {
-        inpaintToggleBtn.classList.add("toggle-on");
+        lipsyncToggleBtn.classList.add("toggle-on");
       } else {
-        inpaintToggleBtn.classList.remove("toggle-on");
+        lipsyncToggleBtn.classList.remove("toggle-on");
       }
     };
 
     this.syncInpaintState = () => {
       const customAudioWidget = this.node.widgets?.find(w => w.name === "use_custom_audio");
       if (customAudioWidget && !customAudioWidget.value) {
-        inpaintToggleBtn.disabled = true;
-        inpaintToggleBtn.style.opacity = "0.4";
-        inpaintToggleBtn.style.cursor = "default";
-        inpaintToggleBtn.title = "Audio Inpainting requires Custom Audio to be ON";
+        lipsyncToggleBtn.disabled = true;
+        lipsyncToggleBtn.style.opacity = "0.4";
+        lipsyncToggleBtn.style.cursor = "default";
+        lipsyncToggleBtn.title = "Lipsync requires Custom Audio to be ON";
       } else {
-        inpaintToggleBtn.disabled = false;
-        inpaintToggleBtn.style.opacity = "1.0";
-        inpaintToggleBtn.style.cursor = "pointer";
-        inpaintToggleBtn.title = "Toggle Audio Inpainting in Gaps";
+        lipsyncToggleBtn.disabled = false;
+        lipsyncToggleBtn.style.opacity = "1.0";
+        lipsyncToggleBtn.style.cursor = "pointer";
+        lipsyncToggleBtn.title = "Toggle lip-sync — syncs mouth to custom audio (requires talking head LoRA)";
       }
     };
 
 
 
-    inpaintToggleBtn.addEventListener("click", (e) => {
+    lipsyncToggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (inpaintToggleBtn.disabled) return;
-      const widget = this.node.widgets?.find(w => w.name === "inpaint_audio");
+      if (lipsyncToggleBtn.disabled) return;
+      const widget = this.node.widgets?.find(w => w.name === "lipsync");
       if (widget) {
         widget.value = !widget.value;
         if (this.node.properties) {
-          this.node.properties.inpaint_audio = widget.value;
+          this.node.properties.lipsync = widget.value;
         }
         this.updateInpaintToggleStyle(widget.value);
         this.commitChanges(true);
@@ -2480,7 +2480,7 @@ class TimelineEditor {
 
     // Initial state check (widgets might not be ready immediately)
     setTimeout(() => {
-      const inpaintWidget = this.node.widgets?.find(w => w.name === "inpaint_audio");
+      const inpaintWidget = this.node.widgets?.find(w => w.name === "lipsync");
       if (inpaintWidget) {
         this.updateInpaintToggleStyle(inpaintWidget.value);
       }
@@ -2534,8 +2534,8 @@ class TimelineEditor {
             if (this.updateToggleStyle) this.updateToggleStyle(false);
           }
 
-          inpaintToggleBtn.disabled = true;
-          inpaintToggleBtn.style.opacity = "0.3";
+          lipsyncToggleBtn.disabled = true;
+          lipsyncToggleBtn.style.opacity = "0.3";
 
           if (this.timeline.motionSegments) {
             for (const seg of this.timeline.motionSegments) {
@@ -2556,8 +2556,8 @@ class TimelineEditor {
               if (this.updateToggleStyle) this.updateToggleStyle(true);
             }
 
-            inpaintToggleBtn.disabled = false;
-            inpaintToggleBtn.style.opacity = "1.0";
+            lipsyncToggleBtn.disabled = false;
+            lipsyncToggleBtn.style.opacity = "1.0";
           }
           this._audioTrackWasEnabledBeforeOverride = false;
         }
@@ -3713,17 +3713,17 @@ class TimelineEditor {
       }
 
       // Disable toggle buttons visually
-      inpaintToggleBtn.disabled = !this.audioTrackEnabled;
-      inpaintToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
+      lipsyncToggleBtn.disabled = !this.audioTrackEnabled;
+      lipsyncToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
 
       this.commitChanges(true);
       this.render();
     });
-    this.audioTrackLabel.appendChild(inpaintToggleBtn);
+    this.audioTrackLabel.appendChild(lipsyncToggleBtn);
 
     // Initialize audio toggle states immediately
-    inpaintToggleBtn.disabled = !this.audioTrackEnabled;
-    inpaintToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
+    lipsyncToggleBtn.disabled = !this.audioTrackEnabled;
+    lipsyncToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
 
     // BG Audio track label + volume control
     this.bgAudioTrackLabel = createTrackLabel("BG AUDIO", "#1a0d3a", "bg_audio", true, () => {});
@@ -3794,8 +3794,8 @@ class TimelineEditor {
               if (this.updateToggleStyle) this.updateToggleStyle(true);
             }
 
-            inpaintToggleBtn.disabled = false;
-            inpaintToggleBtn.style.opacity = "1.0";
+            lipsyncToggleBtn.disabled = false;
+            lipsyncToggleBtn.style.opacity = "1.0";
           }
           this._audioTrackWasEnabledBeforeOverride = false;
         }
@@ -3916,15 +3916,15 @@ class TimelineEditor {
     }
 
     // 3. Sync the inpaint button disabled/opacity state
-    const inpaintToggleBtn = this.audioTrackLabel?.querySelector(".pr-btn");
-    if (inpaintToggleBtn) {
-      inpaintToggleBtn.disabled = !this.audioTrackEnabled;
-      inpaintToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
-      console.log(`  - Updated inpaint toggle button disabled: ${inpaintToggleBtn.disabled}`);
+    const lipsyncToggleBtn = this.audioTrackLabel?.querySelector(".pr-btn");
+    if (lipsyncToggleBtn) {
+      lipsyncToggleBtn.disabled = !this.audioTrackEnabled;
+      lipsyncToggleBtn.style.opacity = this.audioTrackEnabled ? "1.0" : "0.3";
+      console.log(`  - Updated inpaint toggle button disabled: ${lipsyncToggleBtn.disabled}`);
     }
 
     if (this.updateInpaintToggleStyle) {
-      const inpaintWidget = this.node.widgets?.find(w => w.name === "inpaint_audio");
+      const inpaintWidget = this.node.widgets?.find(w => w.name === "lipsync");
       if (inpaintWidget) {
         console.log(`  - calling updateInpaintToggleStyle with ${inpaintWidget.value}`);
         this.updateInpaintToggleStyle(inpaintWidget.value);
@@ -9166,7 +9166,7 @@ class TimelineEditor {
       globalPropHeight: this.globalPropHeight,
       showFilenames: !!this.node.properties.showFilenames,
       overrideAudio: !!this.node.properties.overrideAudio,
-      inpaint_audio: !!(this.node.widgets?.find(w => w.name === "inpaint_audio")?.value),
+      lipsync: !!(this.node.widgets?.find(w => w.name === "lipsync")?.value),
       global_prompt: this.retakeMode ? (this.timeline.global_prompt || "") : (this.globalPromptInput ? this.globalPromptInput.value : ""),
       retake_global_prompt: this.retakeMode ? (this.globalPromptInput ? this.globalPromptInput.value : "") : (this.timeline.retake_global_prompt || ""),
       retakeMode: this.retakeMode,
@@ -10532,8 +10532,8 @@ class TimelineEditor {
       if (this.timeline.overrideAudio !== undefined) {
         this.node.properties.overrideAudio = this.timeline.overrideAudio;
       }
-      if (this.timeline.inpaint_audio !== undefined) {
-        this.node.properties.inpaint_audio = this.timeline.inpaint_audio;
+      if (this.timeline.lipsync !== undefined) {
+        this.node.properties.lipsync = this.timeline.lipsync;
       }
       if (this.timeline.propHeight !== undefined) {
         this.node.properties.propHeight = this.timeline.propHeight;
@@ -10578,7 +10578,7 @@ class TimelineEditor {
 
 
       if (this.updateInpaintToggleStyle) {
-        const inpaintWidget = this.node.widgets?.find(w => w.name === "inpaint_audio");
+        const inpaintWidget = this.node.widgets?.find(w => w.name === "lipsync");
         if (inpaintWidget) this.updateInpaintToggleStyle(inpaintWidget.value);
       }
 
@@ -10631,7 +10631,7 @@ class TimelineEditor {
         motionTrackEnabled: this.motionTrackEnabled,
         showFilenames: !!this.node.properties.showFilenames,
         overrideAudio: !!this.node.properties.overrideAudio,
-        inpaint_audio: !!(this.node.widgets?.find(w => w.name === "inpaint_audio")?.value),
+        lipsync: !!(this.node.widgets?.find(w => w.name === "lipsync")?.value),
         propHeight: this.propHeight,
         globalPropHeight: this.globalPropHeight,
         global_prompt: normPrompt,
@@ -11566,7 +11566,7 @@ app.registerExtension({
           audioTrackEnabled: true,
           motionTrackEnabled: true,
           audioTrackWasEnabledBeforeOverride: false,
-          inpaint_audio: true,
+          lipsync: true,
           override_audio: false,
           overrideAudio: false,
           showFilenames: true,
@@ -11786,7 +11786,7 @@ app.registerExtension({
           console.log("[MuseTimeline] Restoring widgets via fallback name-based schema mapping");
           const SCHEMA_19 = [
             "start_frame", "end_frame", "duration_frames",
-            "timeline_data", "use_custom_audio", "use_custom_motion", "inpaint_audio", "local_prompts", "segment_lengths",
+            "timeline_data", "use_custom_audio", "use_custom_motion", "lipsync", "local_prompts", "segment_lengths",
             "epsilon", "frame_rate", "display_mode", "guide_strength", "custom_width", "custom_height",
             "resize_method", "divisible_by", "img_compression", "timeline_ui"
           ];
@@ -11804,19 +11804,19 @@ app.registerExtension({
           ];
           const SCHEMA_22_WITH_INPAINT = [
             "start_second", "end_second", "duration_seconds", "start_frame", "end_frame", "duration_frames",
-            "timeline_data", "use_custom_audio", "use_custom_motion", "inpaint_audio", "local_prompts", "segment_lengths",
+            "timeline_data", "use_custom_audio", "use_custom_motion", "lipsync", "local_prompts", "segment_lengths",
             "epsilon", "frame_rate", "display_mode", "guide_strength", "custom_width", "custom_height",
             "resize_method", "divisible_by", "img_compression", "timeline_ui"
           ];
           const SCHEMA_23 = [
             "start_second", "end_second", "duration_seconds", "start_frame", "end_frame", "duration_frames",
-            "timeline_data", "use_custom_audio", "use_custom_motion", "inpaint_audio", "local_prompts", "segment_lengths",
+            "timeline_data", "use_custom_audio", "use_custom_motion", "lipsync", "local_prompts", "segment_lengths",
             "epsilon", "frame_rate", "display_mode", "guide_strength", "custom_width", "custom_height",
             "resize_method", "divisible_by", "img_compression", "override_audio", "timeline_ui"
           ];
 
           const ALL_WIDGET_DEFAULTS = {
-            inpaint_audio: true,
+            lipsync: true,
             override_audio: false,
             use_custom_audio: false,
             use_custom_motion: true,
@@ -11907,14 +11907,14 @@ app.registerExtension({
             if (tl.overrideAudio !== undefined) {
               this.properties.overrideAudio = tl.overrideAudio;
             }
-            if (tl.inpaint_audio !== undefined) {
-              this.properties.inpaint_audio = tl.inpaint_audio;
+            if (tl.lipsync !== undefined) {
+              this.properties.lipsync = tl.lipsync;
             }
 
             // Sync widgets to match the timeline data
-            const inpaintWidget = this.widgets?.find(w => w.name === "inpaint_audio");
-            if (inpaintWidget && tl.inpaint_audio !== undefined) {
-              inpaintWidget.value = tl.inpaint_audio;
+            const inpaintWidget = this.widgets?.find(w => w.name === "lipsync");
+            if (inpaintWidget && tl.lipsync !== undefined) {
+              inpaintWidget.value = tl.lipsync;
             }
             const overrideWidget = this.widgets?.find(w => w.name === "override_audio");
             if (overrideWidget && tl.overrideAudio !== undefined) {
