@@ -22,7 +22,7 @@ const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths"
   // Not used / internal defaults only
   "crossfade_frames", "filename_prefix", "display_mode",
   // Guide internals — sensible defaults, no need to expose
-  "guide_scale_by", "guide_scale_by_s2", "guide_upscale_method", "guide_image_attn_strength",
+  "guide_upscale_method", "guide_image_attn_strength",
   "guide_crop", "guide_use_tiled_encode", "guide_tile_size", "guide_tile_overlap",
 ];
 
@@ -32,9 +32,15 @@ const MUSE_SETTINGS_WIDGET_NAMES = [
   "img_compression",
   "chunk_duration_seconds", "auto_chunk_threshold", "carry_frames", "carry_strength",
   "ic_lora_name", "ic_lora_strength", "guide_auto_snap_ic_grid",
-  "stage1_steps", "stage2_steps", "stage2_denoise",
+  "stage1_steps", "guide_scale_by", "stage2_steps", "guide_scale_by_s2", "stage2_denoise",
   "cfg", "seed", "bg_volume",
 ];
+
+// Friendly labels for settings widgets whose raw parameter name isn't self-explanatory
+const MUSE_SETTINGS_WIDGET_LABELS = {
+  "guide_scale_by": "Guide Scale (Stage 1)",
+  "guide_scale_by_s2": "Guide Scale (Stage 2)",
+};
 
 function hideWidget(w) {
   if (!w) return;
@@ -2388,10 +2394,11 @@ class TimelineEditor {
       this.syncLayoutToNode();
     });
     actionGroup.appendChild(settingsToggleBtn);
-    // Hide settings widgets by default on creation
+    // Hide settings widgets by default on creation, apply friendly labels
     setTimeout(() => {
       for (const w of this.node.widgets || []) {
         if (MUSE_SETTINGS_WIDGET_NAMES.includes(w.name)) hideWidget(w);
+        if (MUSE_SETTINGS_WIDGET_LABELS[w.name]) w.label = MUSE_SETTINGS_WIDGET_LABELS[w.name];
       }
       this.node.setDirtyCanvas(true, true);
     }, 100);

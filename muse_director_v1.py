@@ -443,6 +443,39 @@ def _build_guide_data(tdata: dict, start_frame: int, duration_frames: int,
     return guide_data, derived_w, derived_h
 
 
+def _build_motion_guide_data(timeline_data: str, start_frame: int, duration_frames: int,
+                             frame_rate: float, resize_method: str, motion_guide_on: bool):
+    """Parse IC-LoRA Video track segments ('motionSegments' in the timeline JSON)
+    into motion_guide_data for MuseGuide. Ported from the original WhatDreamsCost
+    LTXDirector node (ltx_director.py) — this construction step was never carried
+    over when muse_director_v1.py was rewritten standalone."""
+    motion_guide_data = {"segments": [], "frame_rate": float(frame_rate),
+                          "duration_frames": int(duration_frames), "resize_method": resize_method}
+    try:
+        tdata = json.loads(timeline_data) if timeline_data else {}
+        motion_segments = tdata.get("motionSegments", []) if motion_guide_on else []
+        for seg in motion_segments:
+            seg_start = int(seg.get("start", 0))
+            length = int(seg.get("length", 1))
+            if seg_start >= start_frame + duration_frames or seg_start + length <= start_frame:
+                continue
+            if not seg.get("videoFile"):
+                continue
+            offset = max(0, start_frame - seg_start)
+            new_start = max(0, seg_start - start_frame)
+            clipped_len = min(length - offset, duration_frames - new_start)
+            if clipped_len <= 0:
+                continue
+            clean = dict(seg)
+            clean["start"] = new_start
+            clean["length"] = clipped_len
+            clean["trimStart"] = float(seg.get("trimStart", 0)) + offset
+            motion_guide_data["segments"].append(clean)
+    except Exception as e:
+        log.warning("[MuseDirector] Could not build motion_guide_data: %s", e)
+    return motion_guide_data
+
+
 def _apply_guide(pos, neg, vae, video_latent, guide_data, model,
                  motion_guide_data=None, ic_lora_name="None", ic_lora_strength=1.0,
                  scale_by=0.5, upscale_method="bicubic", image_attention_strength=1.0,
@@ -824,6 +857,13 @@ class MuseDirectorSamplerV1:
             guide_data["duration_frames"] = chunk_dur_frames
             guide_data["resize_method"] = resize_method
 
+            motion_guide_data = _build_motion_guide_data(
+                timeline_data, chunk_s_frame, chunk_dur_frames,
+                frame_rate, resize_method, motion_guide_on,
+            )
+            log.info("[MuseDirector] Motion guide: %d segment(s) (motion_guide_on=%s)",
+                     len(motion_guide_data["segments"]), motion_guide_on)
+
             # ── Build conditioning ───────────────────────────────────────────
             patched_model, positive = _encode_relay(
                 model, clip, pre_latent,
@@ -857,10 +897,17 @@ class MuseDirectorSamplerV1:
             zero_neg = _zero_out_conditioning(positive)
             cond_pos, cond_neg = _unpack(LTXVConditioning.execute(positive, zero_neg, frame_rate))
 
+            # Keep the pre-LoRA (relay-patched only) model so Stage 2 can load the
+            # IC-LoRA fresh onto it too, instead of double-applying on top of Stage 1's
+            # already-patched model (matches the original WDC LTXDirector behavior,
+            # where both stages' model inputs trace back to the same clean source).
+            relay_model = patched_model
+
             pos1, neg1, lat1 = cond_pos, cond_neg, pre_latent
             try:
                 pos1, neg1, lat1, patched_model = _apply_guide(
                     cond_pos, cond_neg, vae, pre_latent, guide_data, patched_model,
+                    motion_guide_data=motion_guide_data,
                     ic_lora_name=ic_lora_name, ic_lora_strength=ic_lora_strength,
                     scale_by=guide_scale_by, upscale_method=guide_upscale_method,
                     image_attention_strength=guide_image_attn_strength,
@@ -938,7 +985,8 @@ class MuseDirectorSamplerV1:
             # Stage 2: DirectorGuide only, no LTXVConditioning (conditioning already baked in from S1)
             try:
                 pos2, neg2, lat2, _ = _apply_guide(
-                    pos1_c, neg1_c, vae, vid_up, guide_data, patched_model,
+                    pos1_c, neg1_c, vae, vid_up, guide_data, relay_model,
+                    motion_guide_data=motion_guide_data,
                     ic_lora_name=ic_lora_name, ic_lora_strength=ic_lora_strength,
                     scale_by=guide_scale_by_s2, upscale_method=guide_upscale_method,
                     image_attention_strength=guide_image_attn_strength,
@@ -950,6 +998,10 @@ class MuseDirectorSamplerV1:
                 log.warning("[MuseDirector] Stage2 guide failed: %s", exc)
                 pos2, neg2 = pos1_c, neg1_c
                 lat2 = vid_up
+            # relay_model was only needed to give Stage 2 a fresh (pre-LoRA) model to
+            # patch — release the reference now so it doesn't linger held in scope
+            # for the rest of the chunk loop.
+            del relay_model
 
             # Reference-frame lock Stage2
             if live_pixel_frames is not None and ref_pixel_count > 0 and ref_t > 0:
@@ -980,6 +1032,18 @@ class MuseDirectorSamplerV1:
                                                        stage2_steps, stage2_denoise))[0]
             noise2   = _unpack(RandomNoise.execute(s2_seed))[0]
             if has_audio:
+                if custom_audio_on and lipsync:
+                    # Re-apply the same "preserve audio" lock used for Stage 1 —
+                    # aud1 is a sampler *output* and doesn't carry the original
+                    # noise_mask forward, so without this Stage 2 is free to
+                    # regenerate the audio-video correlation and can lose the
+                    # lip-sync that Stage 1 established.
+                    aud1_s = aud1["samples"]
+                    aud1_mask = torch.zeros(
+                        aud1_s.shape[0], aud1_s.shape[2], aud1_s.shape[3],
+                        dtype=torch.float32, device=aud1_s.device,
+                    )
+                    aud1 = {**aud1, "noise_mask": aud1_mask}
                 av2_lat = _unpack(LTXVConcatAVLatent.execute(lat2, aud1))[0]
             else:
                 av2_lat = lat2
@@ -1266,10 +1330,37 @@ class MuseDirectorSamplerV1:
             full_video = torch.cat(all_frames, dim=0)
 
         full_path = os.path.join(output_dir, f"{filename_prefix}_{counter:05d}_full.mp4")
-        try:
-            _save_chunk_mp4(full_video, frame_rate, full_path)
-        except Exception as exc:
-            log.warning("[MuseDirector] Full video save failed: %s", exc)
+        # Use ffmpeg concat to avoid loading all frames into CPU RAM (can be 20GB+ for long videos)
+        chunk_paths = [
+            os.path.join(output_dir, f"{filename_prefix}_{counter:05d}_{i:03d}.mp4")
+            for i in range(len(chunks))
+            if os.path.exists(os.path.join(output_dir, f"{filename_prefix}_{counter:05d}_{i:03d}.mp4"))
+        ]
+        if len(chunk_paths) > 1:
+            try:
+                import subprocess, tempfile
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as flist:
+                    for cp in chunk_paths:
+                        flist.write(f"file '{cp}'\n")
+                    flist_path = flist.name
+                subprocess.run(
+                    ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", flist_path,
+                     "-c", "copy", full_path],
+                    check=True, capture_output=True
+                )
+                os.unlink(flist_path)
+                log.info("[MuseDirector] Full video saved via ffmpeg concat: %s", full_path)
+            except Exception as exc:
+                log.warning("[MuseDirector] ffmpeg concat failed, falling back to in-memory save: %s", exc)
+                try:
+                    _save_chunk_mp4(full_video, frame_rate, full_path)
+                except Exception as exc2:
+                    log.warning("[MuseDirector] Full video save failed: %s", exc2)
+        else:
+            try:
+                _save_chunk_mp4(full_video, frame_rate, full_path)
+            except Exception as exc:
+                log.warning("[MuseDirector] Full video save failed: %s", exc)
 
         s1_video = torch.cat(all_s1_frames, dim=0) if all_s1_frames else full_video
         return (full_video, full_audio, s1_video)
