@@ -1579,7 +1579,12 @@ class MuseDirectorSamplerV2:
             if has_audio and isinstance(aud1_out, dict) and "samples" in aud1_out:
                 try:
                     inner_vae = audio_vae.first_stage_model
-                    aud_samples = aud1_out["samples"].cpu().float()
+                    # Match whatever device the VAE's weights are actually on —
+                    # unlike the real pipeline's single-pass flow, this runs 4x
+                    # in a loop without ComfyUI's model manager relocating the
+                    # VAE back to CPU in between, so it can still be on GPU here.
+                    vae_device = next(inner_vae.parameters()).device
+                    aud_samples = aud1_out["samples"].to(vae_device).float()
                     decoded_wav = inner_vae.decode(aud_samples)
                     if decoded_wav.shape[1] == 1:
                         decoded_wav = decoded_wav.expand(-1, 2, -1)
