@@ -1,9 +1,11 @@
 ﻿from .infinite_sampler_v7 import NODE_CLASS_MAPPINGS as _N7, NODE_DISPLAY_NAME_MAPPINGS as _D7
 from .muse_director_v1 import NODE_CLASS_MAPPINGS as _NM1, NODE_DISPLAY_NAME_MAPPINGS as _DM1
+from .muse_director_v2 import NODE_CLASS_MAPPINGS as _NM2, NODE_DISPLAY_NAME_MAPPINGS as _DM2
 from .muse_guide import NODE_CLASS_MAPPINGS as _NMG, NODE_DISPLAY_NAME_MAPPINGS as _DMG
+from .muse_seed_scout import NODE_CLASS_MAPPINGS as _NSS, NODE_DISPLAY_NAME_MAPPINGS as _DSS
 
-NODE_CLASS_MAPPINGS = {**_N7, **_NM1, **_NMG}
-NODE_DISPLAY_NAME_MAPPINGS = {**_D7, **_DM1, **_DMG}
+NODE_CLASS_MAPPINGS = {**_N7, **_NM1, **_NM2, **_NMG, **_NSS}
+NODE_DISPLAY_NAME_MAPPINGS = {**_D7, **_DM1, **_DM2, **_DMG, **_DSS}
 
 WEB_DIRECTORY = "./js"
 
