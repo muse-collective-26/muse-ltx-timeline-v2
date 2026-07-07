@@ -1,7 +1,7 @@
 [project]
 name = "muse-ltx-timeline-v2"
-description = "Fork of muse-ltx-timeline (V1) adding Seed Hunt: a cheap 4-seed low-res scouting pass reusing the real timeline's guide/audio data, so you can pick a seed before committing to the full Stage 1 + Stage 2 pipeline. V1 is included untouched alongside it."
-version = "1.0.3"
+description = "Fork of muse-ltx-timeline (V1) adding Seed Hunt: a 4-seed Stage-1-resolution scouting pass reusing the real timeline's guide/audio data — pick a candidate visually and its actual latent carries forward into Stage 2 (upscale + refine), instead of regenerating from scratch. V1 is included untouched alongside it."
+version = "1.0.7"
 license = { file = "LICENSE" }
 
 [project.urls]

@@ -24,6 +24,10 @@ const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths"
   // Guide internals — sensible defaults, no need to expose
   "guide_upscale_method", "guide_image_attn_strength",
   "guide_crop", "guide_use_tiled_encode", "guide_tile_size", "guide_tile_overlap",
+  // Dead as of Director V2 1.0.4 — Seed Hunt now scouts at Stage 1's real
+  // resolution automatically. Kept as a widget only so old saved workflows
+  // still load correctly; never worth showing.
+  "seed_hunt_scale",
 ];
 
 // Muse settings widgets — shown/hidden by the Settings toggle button (cog)
@@ -34,12 +38,21 @@ const MUSE_SETTINGS_WIDGET_NAMES = [
   "ic_lora_name", "ic_lora_strength", "guide_auto_snap_ic_grid",
   "stage1_steps", "guide_scale_by", "stage2_steps", "guide_scale_by_s2", "stage2_denoise",
   "cfg", "seed", "bg_volume",
+  // Seed Hunt tuning — the seed_hunt toggle and the 4 use_seed_hunt_N pick
+  // toggles stay always-visible (that's the everyday workflow); these are
+  // the "only touch if you know what you're doing" knobs underneath it.
+  "seed_hunt_steps", "seed_hunt_1", "seed_hunt_2", "seed_hunt_3", "seed_hunt_4",
 ];
 
 // Friendly labels for settings widgets whose raw parameter name isn't self-explanatory
 const MUSE_SETTINGS_WIDGET_LABELS = {
   "guide_scale_by": "Guide Scale (Stage 1)",
   "guide_scale_by_s2": "Guide Scale (Stage 2)",
+  "seed_hunt_steps": "Seed Hunt Steps",
+  "seed_hunt_1": "Seed Hunt Fallback Seed 1",
+  "seed_hunt_2": "Seed Hunt Fallback Seed 2",
+  "seed_hunt_3": "Seed Hunt Fallback Seed 3",
+  "seed_hunt_4": "Seed Hunt Fallback Seed 4",
 };
 
 function hideWidget(w) {

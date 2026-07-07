@@ -6,14 +6,21 @@ to muse_director_v1.py (V1 is left completely untouched).
 
 Seed Hunt:
   seed_hunt toggle ON + all use_seed_hunt_N toggles OFF
-    -> runs ONLY a cheap low-res Stage-1-only pass, 4x with 4 different
-       seeds (seed_hunt_1..4), using the real timeline's own guide/audio
-       data (same helper functions V1 uses for its real Stage 1) so
-       multi-segment timelines just work. Returns 4 preview clips on the
-       seed_hunt_preview_1..4 outputs; the normal outputs are placeholders.
+    -> runs a Stage-1-only pass at Stage 1's real resolution, 4x with 4
+       different seeds (seed_hunt_1..4), using the real timeline's own
+       guide/audio data so multi-segment timelines just work. Returns 4
+       preview clips on the seed_hunt_preview_1..4 outputs (normal outputs
+       are placeholders) AND caches each candidate's actual Stage 1 latent
+       in memory (_SEED_HUNT_CANDIDATES), keyed by candidate index.
   seed_hunt toggle ON + exactly one use_seed_hunt_N toggle ON
-    -> overrides `seed` with that candidate's seed_hunt_N value and runs
-       the completely normal full pipeline (unchanged from V1).
+    -> commits to that candidate. Chunk 1 skips a fresh Stage 1 sampler
+       pass entirely and instead carries the cached candidate's real
+       Stage 1 output straight into Stage 2 (upscale + partial refine) —
+       matching Tristan's original ltx23SeedHunter workflow: the seed
+       number never has to "match" across resolutions, because Stage 2 is
+       refining the actual picked content, not regenerating from scratch.
+       If the cache is empty (e.g. server restarted since scouting), falls
+       back to overriding `seed` and running a fresh Stage 1 as before.
   seed_hunt toggle OFF
     -> behaves exactly like V1.
 
@@ -31,6 +38,7 @@ import json
 import logging
 import math
 import os
+import random
 import base64
 import io as _io
 
@@ -624,6 +632,15 @@ def _unpack(result):
     return result.args if hasattr(result, "args") else result
 
 
+# Candidate index (0-3) -> {"vid1", "aud1", "pos1_c", "neg1_c", "seed"}.
+# Populated by a Seed Hunt scouting pass, consumed by the next commit run so
+# Stage 2 can refine the actual picked latent instead of regenerating Stage 1
+# from scratch. Lives for the lifetime of the ComfyUI server process; a
+# cache miss (fresh server, or committing without ever scouting) falls back
+# to the old "override seed and rerun Stage 1" behavior.
+_SEED_HUNT_CANDIDATES = {}
+
+
 # ── Node ──────────────────────────────────────────────────────────────────────
 
 class MuseDirectorSamplerV2:
@@ -715,17 +732,21 @@ class MuseDirectorSamplerV2:
 
                 # Seed Hunt — cheap 4-seed Stage-1-only scouting pass
                 "seed_hunt": ("BOOLEAN", {"default": False,
-                                          "tooltip": "ON + no candidate chosen: run a cheap 4-seed low-res "
-                                                     "Stage-1-only preview instead of the full pipeline. "
-                                                     "ON + one use_seed_hunt_N chosen: run the full pipeline "
-                                                     "using that candidate's seed."}),
+                                          "tooltip": "ON + no candidate chosen: run a 4-seed Stage-1-resolution "
+                                                     "preview instead of the full pipeline. ON + one use_seed_hunt_N "
+                                                     "chosen: commit to that candidate — Stage 2 refines its actual "
+                                                     "cached latent instead of regenerating Stage 1 from scratch."}),
                 "seed_hunt_steps":          ("INT", {"default": 6,  "min": 1, "max": 50}),
                 "seed_hunt_scale": ("FLOAT", {"default": 0.25, "min": 0.05, "max": 1.0, "step": 0.05,
-                                              "tooltip": "Scouting resolution as a fraction of custom_width/custom_height "
-                                                         "— follows whatever orientation/aspect ratio your real settings "
-                                                         "use (portrait or landscape) while staying cheap. Read-only use "
-                                                         "of custom_width/custom_height; never affects the full run."}),
-                "seed_hunt_1": ("INT", {"default": 1, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+                                              "tooltip": "Unused as of 1.0.4 — Seed Hunt now scouts at Stage 1's "
+                                                         "real resolution automatically (so the picked candidate's "
+                                                         "actual latent can carry forward into Stage 2). Kept as a "
+                                                         "widget only so older saved workflows still load correctly."}),
+                "seed_hunt_1": ("INT", {"default": 1, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
+                                         "tooltip": "Unused as of 1.0.4 — scouting now draws a fresh random seed "
+                                                    "for each candidate every run instead of reusing these fixed "
+                                                    "values (the actual latent carries forward on commit, so the "
+                                                    "seed number no longer needs to be fixed or reproducible)."}),
                 "seed_hunt_2": ("INT", {"default": 2, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
                 "seed_hunt_3": ("INT", {"default": 3, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
                 "seed_hunt_4": ("INT", {"default": 4, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
@@ -798,12 +819,18 @@ class MuseDirectorSamplerV2:
         log.info("[MuseDirector] global_prompt: %r", global_prompt)
 
         # ── Seed Hunt ────────────────────────────────────────────────────────
+        seed_hunt_cached_candidate = None
         if seed_hunt:
-            hunt_seeds = [int(seed_hunt_1), int(seed_hunt_2), int(seed_hunt_3), int(seed_hunt_4)]
             hunt_toggles = [use_seed_hunt_1, use_seed_hunt_2, use_seed_hunt_3, use_seed_hunt_4]
             hunt_picked = [i for i, t in enumerate(hunt_toggles) if t]
 
             if not hunt_picked:
+                # Now that a picked candidate carries its own actual latent
+                # forward (not just its seed number), there's no reason for
+                # scouting to keep reusing the same seed_hunt_1..4 values —
+                # fresh random seeds each scout run means a different batch
+                # of 4 to choose from, with zero effect on Stage 2 quality.
+                hunt_seeds = [random.getrandbits(48) for _ in range(4)]
                 # Scout the same length the real run's first chunk will actually
                 # generate — not an independent fixed value — so seed choice is
                 # made on a fair preview of the real generation, not a shorter
@@ -815,13 +842,14 @@ class MuseDirectorSamplerV2:
                 scout_duration_frames = max(9, int(round(_scout_chunk_seconds * frame_rate)))
 
                 log.info("[MuseDirector] Seed Hunt ON, no candidate chosen — running scouting pass "
-                          "(seeds=%s, duration_frames=%d matching the real first chunk), skipping the full pipeline.",
+                          "(seeds=%s, duration_frames=%d matching the real first chunk) at Stage 1's "
+                          "real resolution, skipping the full pipeline.",
                           hunt_seeds, scout_duration_frames)
                 previews, previews_audio = self._run_seed_hunt(
                     model, clip, audio_vae, vae,
                     tdata, timeline_data, start_frame,
                     global_prompt, local_prompts, segment_lengths, guide_strength, epsilon,
-                    frame_rate, scout_duration_frames, custom_width, custom_height, seed_hunt_scale,
+                    frame_rate, scout_duration_frames, custom_width, custom_height,
                     resize_method, divisible_by, img_compression,
                     generate_audio, custom_audio_on, lipsync, motion_guide_on,
                     ic_lora_name, ic_lora_strength, seed_hunt_steps, cfg,
@@ -840,9 +868,22 @@ class MuseDirectorSamplerV2:
                 if len(hunt_picked) > 1:
                     log.warning("[MuseDirector] Seed Hunt: more than one use_seed_hunt_N is on — "
                                 "using the first: seed_hunt_%d", hunt_picked[0] + 1)
-                seed = hunt_seeds[hunt_picked[0]]
-                log.info("[MuseDirector] Seed Hunt: candidate %d chosen — running the FULL pipeline "
-                          "with seed=%d.", hunt_picked[0] + 1, seed)
+                picked_idx = hunt_picked[0]
+                seed_hunt_cached_candidate = _SEED_HUNT_CANDIDATES.get(picked_idx)
+                if seed_hunt_cached_candidate is not None:
+                    # Seed comes from the cache — it's the actual random seed
+                    # that produced this candidate, not seed_hunt_N's current
+                    # widget value (which no longer drives scouting).
+                    seed = seed_hunt_cached_candidate["seed"]
+                    log.info("[MuseDirector] Seed Hunt: candidate %d chosen — reusing its cached Stage 1 "
+                              "latent (seed=%d), skipping a fresh Stage 1 sampler pass for chunk 1.",
+                              picked_idx + 1, seed)
+                else:
+                    fallback_seeds = [int(seed_hunt_1), int(seed_hunt_2), int(seed_hunt_3), int(seed_hunt_4)]
+                    seed = fallback_seeds[picked_idx]
+                    log.warning("[MuseDirector] Seed Hunt: candidate %d chosen but no cached latent found "
+                                "(server restarted, or seed hunt never scouted) — falling back to a fresh "
+                                "Stage 1 with seed=%d.", picked_idx + 1, seed)
 
         total_duration = end_second - start_second
         use_chunks = (auto_chunk_threshold <= 0.0) or (total_duration > auto_chunk_threshold)
@@ -1040,23 +1081,36 @@ class MuseDirectorSamplerV2:
                 except Exception as exc:
                     log.warning("[MuseDirector] Reference lock S1 failed: %s", exc)
 
-            guider1 = _unpack(CFGGuider.execute(patched_model, pos1, neg1, cfg))[0]
-            sampler  = _unpack(KSamplerSelect.execute("euler"))[0]
-            sigmas1  = _unpack(BasicScheduler.execute(patched_model, "linear_quadratic", stage1_steps, 1.0))[0]
-            noise1   = _unpack(RandomNoise.execute(chunk_seed))[0]
-            has_audio = "samples" in audio_latent
-            if has_audio:
-                av1_lat = _unpack(LTXVConcatAVLatent.execute(lat1, audio_latent))[0]
+            if chunk_idx == 0 and seed_hunt_cached_candidate is not None:
+                # Skip a fresh Stage 1 sampler pass entirely — carry the
+                # picked scout candidate's actual generated latent forward
+                # into Stage 2 instead, matching Tristan's ltx23SeedHunter
+                # workflow (composition comes from the real content, not
+                # from a seed number reproducing it at a different shape).
+                vid1 = seed_hunt_cached_candidate["vid1"]
+                aud1 = seed_hunt_cached_candidate["aud1"]
+                pos1_c = seed_hunt_cached_candidate["pos1_c"]
+                neg1_c = seed_hunt_cached_candidate["neg1_c"]
+                has_audio = isinstance(aud1, dict) and "samples" in aud1
+                sampler = _unpack(KSamplerSelect.execute("euler"))[0]  # Stage 2 reuses this below
             else:
-                av1_lat = lat1
-            out1, _ = _unpack(SamplerCustomAdvanced.execute(noise1, guider1, sampler, sigmas1, av1_lat))
-            if has_audio:
-                out1_vid, aud1 = _unpack(LTXVSeparateAVLatent.execute(out1))
-            else:
-                out1_vid = out1
-                aud1 = {}
+                guider1 = _unpack(CFGGuider.execute(patched_model, pos1, neg1, cfg))[0]
+                sampler  = _unpack(KSamplerSelect.execute("euler"))[0]
+                sigmas1  = _unpack(BasicScheduler.execute(patched_model, "linear_quadratic", stage1_steps, 1.0))[0]
+                noise1   = _unpack(RandomNoise.execute(chunk_seed))[0]
+                has_audio = "samples" in audio_latent
+                if has_audio:
+                    av1_lat = _unpack(LTXVConcatAVLatent.execute(lat1, audio_latent))[0]
+                else:
+                    av1_lat = lat1
+                out1, _ = _unpack(SamplerCustomAdvanced.execute(noise1, guider1, sampler, sigmas1, av1_lat))
+                if has_audio:
+                    out1_vid, aud1 = _unpack(LTXVSeparateAVLatent.execute(out1))
+                else:
+                    out1_vid = out1
+                    aud1 = {}
 
-            pos1_c, neg1_c, vid1 = _crop_conditioning(pos1, neg1, out1_vid)
+                pos1_c, neg1_c, vid1 = _crop_conditioning(pos1, neg1, out1_vid)
 
             # Stage1 decode for comparison
             try:
@@ -1468,7 +1522,7 @@ class MuseDirectorSamplerV2:
         self, model, clip, audio_vae, vae,
         tdata, timeline_data, start_frame,
         global_prompt, local_prompts, segment_lengths, guide_strength, epsilon,
-        frame_rate, seed_hunt_duration_frames, custom_width, custom_height, seed_hunt_scale,
+        frame_rate, seed_hunt_duration_frames, custom_width, custom_height,
         resize_method, divisible_by, img_compression,
         generate_audio, custom_audio_on, lipsync, motion_guide_on,
         ic_lora_name, ic_lora_strength, seed_hunt_steps, cfg,
@@ -1476,18 +1530,17 @@ class MuseDirectorSamplerV2:
         guide_crop, guide_auto_snap_ic_grid, guide_use_tiled_encode,
         guide_tile_size, guide_tile_overlap, hunt_seeds,
     ):
-        """Cheap low-res Stage-1-only pass, run once per seed in hunt_seeds.
-        Reuses the exact same helper functions the real Stage 1 above uses,
-        against the real timeline data, so multi-segment timelines, the real
-        audio track, and IC-LoRA all behave the same as a full run would.
-        Resolution is seed_hunt_scale * custom_width/custom_height — a
-        read-only proportional use of the real target resolution, so scouting
-        automatically follows whatever orientation (portrait/landscape) you're
-        using while staying cheap. Changing it can't alter the full run's own
-        output once a seed is chosen (that path never touches this method,
-        or seed_hunt_scale, at all)."""
-        s1_w = max(divisible_by, int(custom_width * seed_hunt_scale) // divisible_by * divisible_by)
-        s1_h = max(divisible_by, int(custom_height * seed_hunt_scale) // divisible_by * divisible_by)
+        """Stage-1-only pass, run once per seed in hunt_seeds, at Stage 1's
+        own real resolution (half of custom_width/custom_height) — the exact
+        same shape the real Stage 1 would use. Reuses the exact same helper
+        functions the real Stage 1 above uses, against the real timeline
+        data, so multi-segment timelines, the real audio track, and IC-LoRA
+        all behave the same as a full run would. Each candidate's actual
+        Stage 1 output latent is cached into _SEED_HUNT_CANDIDATES so a
+        later commit can carry it straight into Stage 2 instead of
+        regenerating Stage 1 from scratch."""
+        s1_w = max(divisible_by, (custom_width  // 2 // divisible_by) * divisible_by)
+        s1_h = max(divisible_by, (custom_height // 2 // divisible_by) * divisible_by)
 
         ltxv_len = int(math.ceil((seed_hunt_duration_frames - 1) / 8.0) * 8) + 1
         latent_t = ((ltxv_len - 1) // 8) + 1
@@ -1575,6 +1628,11 @@ class MuseDirectorSamplerV2:
                 aud1_out = {}
             _pos1_c, _neg1_c, vid1 = _crop_conditioning(pos1, neg1, out1_vid)
 
+            _SEED_HUNT_CANDIDATES[i] = {
+                "vid1": vid1, "aud1": aud1_out,
+                "pos1_c": _pos1_c, "neg1_c": _neg1_c, "seed": int(sd),
+            }
+
             decoded = vae.decode(vid1["samples"])
             if decoded.ndim == 5:
                 decoded = decoded.squeeze(0)
@@ -1609,7 +1667,7 @@ class MuseDirectorSamplerV2:
                 decoded_wav = torch.zeros(1, 2, 1)
             previews_audio.append({"waveform": decoded_wav, "sample_rate": 44100})
 
-            log.info("[MuseDirector] Seed Hunt candidate %d/4 done (seed=%d, %d frames).",
+            log.info("[MuseDirector] Seed Hunt candidate %d/4 done and cached (seed=%d, %d frames).",
                      i + 1, sd, decoded.shape[0])
 
         return previews, previews_audio
