@@ -130,13 +130,12 @@ Place in: `models/loras/LTX2.3/`
 
 ## Example workflow
 
-An example workflow is included in the repo: **`Muse-Director-V1.json`**
+An example workflow is included in the repo: **`Muse-Director-V2 - seed scout.json`**
 
-This workflow is configured for a 90-second talking head video at 704×1280 with:
-- Lipsync to a custom speech audio file
-- BG audio track for ambience
-- Talking head LoRA loaded
-- Base model wired for optional ambient audio generation
+This workflow uses **`MuseDirectorSamplerV2`** with Seed Hunt enabled, at 1280×704 / 10s, and includes:
+- All 4 `seed_hunt_preview_N` / `seed_hunt_audio_N` outputs wired to their own Video Combine nodes for reviewing candidates before committing
+- Lipsync-ready audio wiring
+- A spatial-upscale chain (RTX Video Super Resolution) on the committed output
 
 Load it in ComfyUI via **Load** and swap in your own image and audio files.
 
