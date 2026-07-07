@@ -17,24 +17,25 @@ This is a fork of the original [muse-collective-26/muse-ltx-timeline](https://gi
 LTX 2.3 is far more sensitive to seed than to prompt wording — the fastest path to a good result is usually trying a handful of seeds cheaply and picking the best one, rather than iterating on the prompt. Seed Hunt bakes that workflow into the node itself, using the node's own real timeline data (images, audio, motion guide) so multi-segment timelines just work with no extra wiring.
 
 **How it works:**
-- Flip `seed_hunt` on, leave all four `use_seed_hunt_1..4` toggles off, and run — the node generates 4 cheap, low-resolution Stage-1-only candidates (seeds `seed_hunt_1..4`) instead of running the full pipeline. Output ports `seed_hunt_preview_1..4` show each candidate.
-- Look at the 4 previews, then flip exactly one `use_seed_hunt_N` on and run again — the node now runs the completely normal full pipeline (Stage 1 + Stage 2, your real resolution/duration/audio settings), using that candidate's seed for **both** stages.
-- Re-running with only a toggle changed doesn't regenerate the 4 candidates — they're cached against every other input, so flipping a toggle is instant.
+- Flip `seed_hunt` on, leave all four `use_seed_hunt_1..4` toggles off, and run — the node generates 4 candidates at Stage 1's real resolution, each with a fresh random seed, instead of running the full pipeline. Output ports `seed_hunt_preview_1..4` show each candidate, and each candidate's actual Stage 1 latent is cached in memory.
+- Look at the 4 previews, then flip exactly one `use_seed_hunt_N` on and run again — the node skips regenerating Stage 1 from scratch and instead carries that candidate's cached real latent straight into the existing Stage 2 step (upscale + partial refine). What you see in the preview is what carries through, not a fresh independent roll that merely happens to share a seed number.
+- If the cache is empty (e.g. the server restarted since scouting, or you commit to a candidate without ever scouting first), it falls back to overriding `seed` and running Stage 1 fresh, using that candidate's `seed_hunt_N` widget value.
+
+This mirrors the community "ltx23SeedHunter" workflow that inspired this feature: the seed number doesn't need to "match" across resolutions, because Stage 2 is refining the actual picked content, not regenerating it from a noise field that merely shares a seed integer.
 
 **Settings added on top of V1:**
 
 | Setting | Purpose |
 |---|---|
 | `seed_hunt` | Master toggle for the feature. Off = identical to V1. |
-| `seed_hunt_1..4` | The 4 candidate seeds to compare. |
-| `use_seed_hunt_1..4` | Flip exactly one on to select a candidate and run the full pipeline with it. |
-| `seed_hunt_steps` | Sampler steps for the cheap scouting pass (independent of `stage1_steps`). |
-| `seed_hunt_duration_frames` | Scouting clip length — independent of your real duration. |
-| `seed_hunt_scale` | Scouting resolution as a fraction of `custom_width`/`custom_height` (default 0.25) — follows whatever orientation (portrait/landscape) you're actually using, without affecting the committed run's real resolution. |
+| `use_seed_hunt_1..4` | Flip exactly one on to commit to that candidate. |
+| `seed_hunt_steps` | Sampler steps for the scouting pass (independent of `stage1_steps`). Advanced — hidden behind the Settings toggle by default. |
+| `seed_hunt_1..4` | Fallback seeds, only used if you commit to a candidate without ever scouting (cache miss) — normal scouting ignores these and randomizes instead. Advanced — hidden behind the Settings toggle by default. |
+| `seed_hunt_scale` | Unused as of 1.0.4 — scouting always renders at Stage 1's real resolution now. Kept only so older saved workflows still load correctly; permanently hidden in the UI. |
 
 Also included: **`Muse Seed Scout`**, an earlier, standalone version of the same idea that runs outside Director and only takes a single reference image rather than the full timeline. Superseded by V2's built-in Seed Hunt for anything with more than one timeline segment, but kept as a lighter-weight option for single-image setups.
 
-**One deliberate difference from V1:** V1 uses `seed - 1` for Stage 2's noise seed (separate from Stage 1's). V2 uses the same seed for both stages, so a Seed Hunt candidate's look carries through faithfully to the full-resolution committed run.
+**One deliberate difference from V1:** V1 uses `seed - 1` for Stage 2's noise seed (separate from Stage 1's); V2 uses the same seed value for both stages. That said, Seed Hunt's faithfulness to a picked candidate doesn't come from the seed matching — it comes from Stage 2 refining that candidate's actual cached latent directly.
 
 ---
 
