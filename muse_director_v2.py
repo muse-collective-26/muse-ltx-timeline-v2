@@ -742,10 +742,13 @@ class MuseDirectorSamplerV2:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "AUDIO", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE")
+    RETURN_TYPES = ("IMAGE", "AUDIO", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE",
+                     "AUDIO", "AUDIO", "AUDIO", "AUDIO")
     RETURN_NAMES = ("last_chunk_frames", "audio", "stage1_frames",
                      "seed_hunt_preview_1", "seed_hunt_preview_2",
-                     "seed_hunt_preview_3", "seed_hunt_preview_4")
+                     "seed_hunt_preview_3", "seed_hunt_preview_4",
+                     "seed_hunt_audio_1", "seed_hunt_audio_2",
+                     "seed_hunt_audio_3", "seed_hunt_audio_4")
     FUNCTION = "execute"
     CATEGORY = "Muse Collective"
     DESCRIPTION = (
@@ -805,7 +808,7 @@ class MuseDirectorSamplerV2:
             if not hunt_picked:
                 log.info("[MuseDirector] Seed Hunt ON, no candidate chosen — running scouting pass "
                           "(seeds=%s), skipping the full pipeline.", hunt_seeds)
-                previews = self._run_seed_hunt(
+                previews, previews_audio = self._run_seed_hunt(
                     model, clip, audio_vae, vae,
                     tdata, timeline_data, start_frame,
                     global_prompt, local_prompts, segment_lengths, guide_strength, epsilon,
@@ -822,7 +825,8 @@ class MuseDirectorSamplerV2:
                 dummy_frame = torch.zeros((1, 64, 64, 3))
                 dummy_audio = {"waveform": torch.zeros(1, 1, 1), "sample_rate": 44100}
                 return (dummy_frame, dummy_audio, dummy_frame,
-                        previews[0], previews[1], previews[2], previews[3])
+                        previews[0], previews[1], previews[2], previews[3],
+                        previews_audio[0], previews_audio[1], previews_audio[2], previews_audio[3])
             else:
                 if len(hunt_picked) > 1:
                     log.warning("[MuseDirector] Seed Hunt: more than one use_seed_hunt_N is on — "
@@ -1446,8 +1450,10 @@ class MuseDirectorSamplerV2:
 
         s1_video = torch.cat(all_s1_frames, dim=0) if all_s1_frames else full_video
         _dummy_scout = torch.zeros((1, 64, 64, 3))
+        _dummy_scout_audio = {"waveform": torch.zeros(1, 2, 1), "sample_rate": 44100}
         return (full_video, full_audio, s1_video,
-                _dummy_scout, _dummy_scout, _dummy_scout, _dummy_scout)
+                _dummy_scout, _dummy_scout, _dummy_scout, _dummy_scout,
+                _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio)
 
     def _run_seed_hunt(
         self, model, clip, audio_vae, vae,
@@ -1546,6 +1552,7 @@ class MuseDirectorSamplerV2:
             av1_lat = lat1
 
         previews = []
+        previews_audio = []
         for i, sd in enumerate(hunt_seeds):
             # Reused as-is across candidates — same pattern Director's own real
             # Stage 1 uses (no defensive clone; av1_lat["samples"] can be a
@@ -1553,9 +1560,10 @@ class MuseDirectorSamplerV2:
             noise1 = _unpack(RandomNoise.execute(int(sd)))[0]
             out1, _ = _unpack(SamplerCustomAdvanced.execute(noise1, guider1, sampler, sigmas1, av1_lat))
             if has_audio:
-                out1_vid, _aud1 = _unpack(LTXVSeparateAVLatent.execute(out1))
+                out1_vid, aud1_out = _unpack(LTXVSeparateAVLatent.execute(out1))
             else:
                 out1_vid = out1
+                aud1_out = {}
             _pos1_c, _neg1_c, vid1 = _crop_conditioning(pos1, neg1, out1_vid)
 
             decoded = vae.decode(vid1["samples"])
@@ -1564,10 +1572,33 @@ class MuseDirectorSamplerV2:
             if decoded.ndim == 3:
                 decoded = decoded.unsqueeze(0)
             previews.append(decoded.cpu())
+
+            # Decode this candidate's audio the same way the real pipeline does,
+            # so lipsync (or generated audio) can actually be judged per seed.
+            decoded_wav = None
+            if has_audio and isinstance(aud1_out, dict) and "samples" in aud1_out:
+                try:
+                    inner_vae = audio_vae.first_stage_model
+                    aud_samples = aud1_out["samples"].cpu().float()
+                    decoded_wav = inner_vae.decode(aud_samples)
+                    if decoded_wav.shape[1] == 1:
+                        decoded_wav = decoded_wav.expand(-1, 2, -1)
+                    decoded_wav = decoded_wav.cpu().float()
+                    audio_sr = getattr(inner_vae, "output_sample_rate", 44100)
+                    if audio_sr != 44100:
+                        import torchaudio
+                        decoded_wav = torchaudio.functional.resample(decoded_wav, audio_sr, 44100)
+                except Exception as exc:
+                    log.warning("[MuseDirector] Seed Hunt candidate %d audio decode failed: %s", i + 1, exc)
+                    decoded_wav = None
+            if decoded_wav is None:
+                decoded_wav = torch.zeros(1, 2, 1)
+            previews_audio.append({"waveform": decoded_wav, "sample_rate": 44100})
+
             log.info("[MuseDirector] Seed Hunt candidate %d/4 done (seed=%d, %d frames).",
                      i + 1, sd, decoded.shape[0])
 
-        return previews
+        return previews, previews_audio
 
 
 NODE_CLASS_MAPPINGS = {
