@@ -720,8 +720,6 @@ class MuseDirectorSamplerV2:
                                                      "ON + one use_seed_hunt_N chosen: run the full pipeline "
                                                      "using that candidate's seed."}),
                 "seed_hunt_steps":          ("INT", {"default": 6,  "min": 1, "max": 50}),
-                "seed_hunt_duration_frames": ("INT", {"default": 25, "min": 9, "max": 86400, "step": 8,
-                                                      "tooltip": "Scouting preview length — independent of your real duration_seconds/duration_frames."}),
                 "seed_hunt_scale": ("FLOAT", {"default": 0.25, "min": 0.05, "max": 1.0, "step": 0.05,
                                               "tooltip": "Scouting resolution as a fraction of custom_width/custom_height "
                                                          "— follows whatever orientation/aspect ratio your real settings "
@@ -777,7 +775,7 @@ class MuseDirectorSamplerV2:
         guide_image_attn_strength=1.0, guide_crop="center", guide_auto_snap_ic_grid=True,
         guide_use_tiled_encode=False, guide_tile_size=256, guide_tile_overlap=64,
         bg_volume=1.0, bg_audio=None, base_model=None, timeline_ui="",
-        seed_hunt=False, seed_hunt_steps=6, seed_hunt_duration_frames=25,
+        seed_hunt=False, seed_hunt_steps=6,
         seed_hunt_scale=0.25,
         seed_hunt_1=1, seed_hunt_2=2, seed_hunt_3=3, seed_hunt_4=4,
         use_seed_hunt_1=False, use_seed_hunt_2=False, use_seed_hunt_3=False, use_seed_hunt_4=False,
@@ -806,13 +804,24 @@ class MuseDirectorSamplerV2:
             hunt_picked = [i for i, t in enumerate(hunt_toggles) if t]
 
             if not hunt_picked:
+                # Scout the same length the real run's first chunk will actually
+                # generate — not an independent fixed value — so seed choice is
+                # made on a fair preview of the real generation, not a shorter
+                # or longer one that can genuinely diverge in content.
+                _scout_total_duration = max(0.0, end_second - start_second)
+                _scout_use_chunks = (auto_chunk_threshold <= 0.0) or (_scout_total_duration > auto_chunk_threshold)
+                _scout_effective_chunk = chunk_duration_seconds if _scout_use_chunks else _scout_total_duration
+                _scout_chunk_seconds = min(_scout_effective_chunk, _scout_total_duration) if _scout_total_duration > 0 else 1.0
+                scout_duration_frames = max(9, int(round(_scout_chunk_seconds * frame_rate)))
+
                 log.info("[MuseDirector] Seed Hunt ON, no candidate chosen — running scouting pass "
-                          "(seeds=%s), skipping the full pipeline.", hunt_seeds)
+                          "(seeds=%s, duration_frames=%d matching the real first chunk), skipping the full pipeline.",
+                          hunt_seeds, scout_duration_frames)
                 previews, previews_audio = self._run_seed_hunt(
                     model, clip, audio_vae, vae,
                     tdata, timeline_data, start_frame,
                     global_prompt, local_prompts, segment_lengths, guide_strength, epsilon,
-                    frame_rate, seed_hunt_duration_frames, custom_width, custom_height, seed_hunt_scale,
+                    frame_rate, scout_duration_frames, custom_width, custom_height, seed_hunt_scale,
                     resize_method, divisible_by, img_compression,
                     generate_audio, custom_audio_on, lipsync, motion_guide_on,
                     ic_lora_name, ic_lora_strength, seed_hunt_steps, cfg,
