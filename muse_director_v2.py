@@ -885,6 +885,18 @@ class MuseDirectorSamplerV2:
                                 "(server restarted, or seed hunt never scouted) — falling back to a fresh "
                                 "Stage 1 with seed=%d.", picked_idx + 1, seed)
 
+                # Committing consumes the cache — what we need for this run is
+                # already pulled into seed_hunt_cached_candidate above, so the
+                # dict itself (all 4 candidates' full latents, including the 3
+                # never picked) is now dead weight. Clear it and reclaim the
+                # memory before the expensive Stage 2 work starts, rather than
+                # letting it linger in VRAM/RAM for the rest of this run.
+                if _SEED_HUNT_CANDIDATES:
+                    _SEED_HUNT_CANDIDATES.clear()
+                    mm.soft_empty_cache(force=True)
+                    gc.collect()
+                    log.info("[MuseDirector] Seed Hunt cache cleared after commit.")
+
         total_duration = end_second - start_second
         use_chunks = (auto_chunk_threshold <= 0.0) or (total_duration > auto_chunk_threshold)
         effective_chunk = chunk_duration_seconds if use_chunks else total_duration
