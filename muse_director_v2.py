@@ -856,6 +856,7 @@ class MuseDirectorSamplerV2:
                     guide_scale_by, guide_upscale_method, guide_image_attn_strength,
                     guide_crop, guide_auto_snap_ic_grid, guide_use_tiled_encode,
                     guide_tile_size, guide_tile_overlap, hunt_seeds,
+                    base_model=base_model,
                 )
                 mm.soft_empty_cache(force=True)
                 gc.collect()
@@ -1255,29 +1256,53 @@ class MuseDirectorSamplerV2:
                     src = frames.float()
                     src_mean = src.mean(dim=(0, 1, 2))
                     src_std  = src.std(dim=(0, 1, 2)).clamp(min=1e-5)
-                    corrected = (src - src_mean) / src_std * color_ref_std + color_ref_mean
+                    # color_ref_mean/std were captured from chunk 0's decode —
+                    # by the time chunk N's color match runs, dynamic VRAM
+                    # loading may have moved tensors between devices, so
+                    # re-home them onto src's device/dtype rather than
+                    # assuming they still match (a silent device-mismatch
+                    # exception here was the likely reason this was never
+                    # visibly correcting anything).
+                    ref_mean = color_ref_mean.to(device=src.device, dtype=src.dtype)
+                    ref_std  = color_ref_std.to(device=src.device, dtype=src.dtype)
+                    corrected = (src - src_mean) / src_std * ref_std + ref_mean
                     corrected = corrected.clamp(0.0, 1.0)
-                    n_blend = min(int(frame_rate), frames.shape[0])
-                    blend = torch.linspace(1.0, 0.5, n_blend, device=frames.device)
-                    corrected[:n_blend] = (
-                        corrected[:n_blend] * blend[:, None, None, None]
-                        + src[:n_blend] * (1.0 - blend[:, None, None, None])
-                    )
-                    frames = corrected.to(all_frames[-1].dtype)
+                    # Ease from full correction right at the chunk boundary
+                    # down to a low resting correction over the first
+                    # second, then hold there for the rest of the chunk.
+                    # Previously only the first n_blend frames were blended
+                    # and everything after snapped back to 100% correction,
+                    # creating its own visible seam a second into the chunk
+                    # instead of a smooth transition.
+                    ramp_len = min(int(frame_rate), frames.shape[0])
+                    floor = 0.15
+                    blend = torch.full((frames.shape[0],), floor, device=frames.device, dtype=torch.float32)
+                    blend[:ramp_len] = torch.linspace(1.0, floor, ramp_len, device=frames.device)
+                    frames = (
+                        corrected * blend[:, None, None, None]
+                        + src * (1.0 - blend[:, None, None, None])
+                    ).to(all_frames[-1].dtype)
                 except Exception as exc:
-                    log.warning("[MuseDirector] Color match failed: %s", exc)
+                    log.warning("[MuseDirector] Color match failed: %s", exc, exc_info=True)
 
             all_frames.append(frames)
             cat_so_far = torch.cat(all_frames, dim=0)
             live_pixel_frames = cat_so_far[-carry_frames:].clone().cpu()
 
-            # ── Ambient-only pass (all three audio buttons on) ────────────────
-            # When gen=ON + custom=ON + lipsync=ON the main pass used zeros mask
-            # (speech preserved for lipsync). Run a second lightweight pass with
-            # ones mask to generate ambient/SFX audio separately, then mix under
-            # the clean custom speech — no echo.
+            # ── Ambient-only pass ───────────────────────────────────────────────
+            # The main pass's model has the talking-head LoRA applied, which is
+            # trained on clean dry speech and suppresses [SOUNDS] ambient content
+            # regardless of prompt wording or CFG — confirmed by testing, not just
+            # theory. So whenever generate_audio is on, run a second lightweight
+            # pass on a LoRA-free model (wire base_model = UNETLoader output
+            # directly, bypassing the LoRA chain) to actually get ambient/SFX,
+            # then mix it under whatever speech source is in use (custom lipsync
+            # audio, or the main pass's own generated speech). Runs regardless of
+            # custom_audio_on/lipsync now — it used to be gated to only the
+            # custom-audio-plus-lipsync case, which silently dropped ambient sound
+            # for pure generate_audio-only runs.
             ambient_wav = None
-            if generate_audio and custom_audio_on and lipsync and audio_vae is not None:
+            if generate_audio and audio_vae is not None:
                 try:
                     inner_vae_a = getattr(audio_vae, "first_stage_model", audio_vae)
                     num_amb_latents = inner_vae_a.num_of_latents_from_frames(ltxv_len, float(frame_rate))
@@ -1374,6 +1399,14 @@ class MuseDirectorSamplerV2:
                 mixed = decoded_wav[..., :min_len] + custom_wav[..., :min_len]
                 combined_audio = {"waveform": mixed, "sample_rate": audio_sr}
                 log.info("[MuseDirector] Audio: mixed generated + custom")
+            elif decoded_wav is not None and ambient_wav is not None:
+                # Pure generate_audio mode: decoded_wav is the main pass's own
+                # speech (talking-head LoRA, ambient-suppressed) — layer the
+                # LoRA-free ambient pass underneath it.
+                min_len = min(decoded_wav.shape[-1], ambient_wav.shape[-1])
+                mixed = decoded_wav[..., :min_len] + ambient_wav[..., :min_len] * 0.25
+                combined_audio = {"waveform": mixed, "sample_rate": audio_sr}
+                log.info("[MuseDirector] Audio: generated speech + ambient layer")
             elif decoded_wav is not None:
                 combined_audio = {"waveform": decoded_wav, "sample_rate": audio_sr}
                 log.info("[MuseDirector] Audio: generated only")
@@ -1541,6 +1574,7 @@ class MuseDirectorSamplerV2:
         guide_scale_by, guide_upscale_method, guide_image_attn_strength,
         guide_crop, guide_auto_snap_ic_grid, guide_use_tiled_encode,
         guide_tile_size, guide_tile_overlap, hunt_seeds,
+        base_model=None,
     ):
         """Stage-1-only pass, run once per seed in hunt_seeds, at Stage 1's
         own real resolution (half of custom_width/custom_height) — the exact
@@ -1625,6 +1659,65 @@ class MuseDirectorSamplerV2:
         else:
             av1_lat = lat1
 
+        # Ambient pass — same LoRA-free-model technique as the main commit
+        # path (see execute()'s chunk loop). Computed once, not per-candidate:
+        # it uses a fresh empty pre_latent for visual context (not any
+        # candidate's actual generated video), so it's identical regardless
+        # of which of the 4 seeds is being previewed. Without this, scouted
+        # previews never reflected what a commit would actually sound like.
+        ambient_wav = None
+        if generate_audio and audio_vae is not None:
+            try:
+                inner_vae_a = getattr(audio_vae, "first_stage_model", audio_vae)
+                num_amb_latents = inner_vae_a.num_of_latents_from_frames(ltxv_len, float(frame_rate))
+                z_ch = audio_vae.latent_channels
+                a_freq = inner_vae_a.latent_frequency_bins
+                amb_audio_samples = torch.zeros(
+                    (1, z_ch, num_amb_latents, a_freq),
+                    device=mm.intermediate_device(),
+                )
+                amb_noise_mask = torch.ones(
+                    (1, num_amb_latents, a_freq),
+                    dtype=torch.float32, device=mm.intermediate_device(),
+                )
+                amb_audio_lat = {"samples": amb_audio_samples, "type": "audio", "noise_mask": amb_noise_mask}
+                vid_ones = torch.ones(
+                    (pre_latent["samples"].shape[0], pre_latent["samples"].shape[2],
+                     pre_latent["samples"].shape[3], pre_latent["samples"].shape[4]),
+                    dtype=torch.float32, device=pre_latent["samples"].device,
+                )
+                amb_vid_lat = {"samples": pre_latent["samples"].clone(), "noise_mask": vid_ones}
+                av_amb = _unpack(LTXVConcatAVLatent.execute(amb_vid_lat, amb_audio_lat))[0]
+                import re as _re
+                all_prompts = [global_prompt] + (local_prompts if isinstance(local_prompts, list) else [local_prompts])
+                sounds_parts = []
+                for _p in all_prompts:
+                    for _m in _re.findall(r'\[SOUNDS?\][^\[]*', _p, _re.IGNORECASE):
+                        sounds_parts.append(_m.strip())
+                amb_text = ' '.join(sounds_parts) if sounds_parts else "ambient background sounds"
+                amb_cond = clip.encode_from_tokens_scheduled(clip.tokenize(amb_text))
+                amb_zero_neg = _zero_out_conditioning(amb_cond)
+                amb_cond_pos, amb_cond_neg = _unpack(LTXVConditioning.execute(amb_cond, amb_zero_neg, frame_rate))
+                amb_model = base_model if base_model is not None else model
+                amb_guider = _unpack(CFGGuider.execute(amb_model, amb_cond_pos, amb_cond_neg, cfg))[0]
+                amb_sampler = _unpack(KSamplerSelect.execute("euler"))[0]
+                amb_sigmas = _unpack(BasicScheduler.execute(amb_model, "linear_quadratic", int(seed_hunt_steps), 1.0))[0]
+                amb_noise = _unpack(RandomNoise.execute(int(hunt_seeds[0]) + 99999))[0]
+                amb_out, _ = _unpack(SamplerCustomAdvanced.execute(amb_noise, amb_guider, amb_sampler, amb_sigmas, av_amb))
+                _, amb_aud = _unpack(LTXVSeparateAVLatent.execute(amb_out))
+                if isinstance(amb_aud, dict) and "samples" in amb_aud:
+                    amb_decoded = inner_vae_a.decode(amb_aud["samples"].cpu().float())
+                    if amb_decoded.shape[1] == 1:
+                        amb_decoded = amb_decoded.expand(-1, 2, -1)
+                    ambient_wav = amb_decoded.cpu().float()
+                    amb_sr = getattr(inner_vae_a, "output_sample_rate", 44100)
+                    if amb_sr != 44100:
+                        import torchaudio as _ta
+                        ambient_wav = _ta.functional.resample(ambient_wav, amb_sr, 44100)
+                    log.info("[MuseDirector] Seed Hunt ambient pass decoded: shape %s", list(ambient_wav.shape))
+            except Exception as exc:
+                log.warning("[MuseDirector] Seed Hunt ambient pass failed: %s", exc)
+
         previews = []
         previews_audio = []
         for i, sd in enumerate(hunt_seeds):
@@ -1677,6 +1770,9 @@ class MuseDirectorSamplerV2:
                     decoded_wav = None
             if decoded_wav is None:
                 decoded_wav = torch.zeros(1, 2, 1)
+            if ambient_wav is not None:
+                min_len = min(decoded_wav.shape[-1], ambient_wav.shape[-1])
+                decoded_wav = decoded_wav[..., :min_len] + ambient_wav[..., :min_len] * 0.25
             previews_audio.append({"waveform": decoded_wav, "sample_rate": 44100})
 
             log.info("[MuseDirector] Seed Hunt candidate %d/4 done and cached (seed=%d, %d frames).",
