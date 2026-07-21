@@ -133,10 +133,10 @@ Place in: `models/loras/LTX2.3/`
 
 An example workflow is included in the repo: **`Muse-Director-V2 - seed scout.json`**
 
-This workflow uses **`MuseDirectorSamplerV2`** with Seed Hunt enabled, at 1280×704 / 10s, and includes:
-- All 4 `seed_hunt_preview_N` / `seed_hunt_audio_N` outputs wired to their own Video Combine nodes for reviewing candidates before committing
+This workflow uses **`MuseDirectorSamplerV2`** at 1920×1088, and includes:
+- All 4 `seed_hunt_preview_N` / `seed_hunt_audio_N` outputs wired to their own Video Combine nodes for reviewing Seed Hunt candidates before committing
 - Lipsync-ready audio wiring
-- A spatial-upscale chain (RTX Video Super Resolution) on the committed output
+- The `reference_image` output wired into **`MuseColorMatchBatched`** (a separate, memory-bounded color-match node, installed independently), which feeds both a direct "Full" output and an RTX Video Super Resolution "Upscaled" output
 
 Load it in ComfyUI via **Load** and swap in your own image and audio files.
 

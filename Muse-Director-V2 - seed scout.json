@@ -1,143 +1,476 @@
 {
   "id": "f49e17ff-6b81-421b-88a0-1a710857b5d8",
   "revision": 0,
-  "last_node_id": 75,
-  "last_link_id": 163,
+  "last_node_id": 92,
+  "last_link_id": 191,
   "nodes": [
     {
-      "id": 65,
-      "type": "edd480e9-2c39-46bd-9764-f461ce3ff9c9",
+      "id": 70,
+      "type": "LayerUtility: PurgeVRAM",
       "pos": [
-        2313.3965714890774,
-        1525.6458545727196
+        7700.961297515637,
+        1575.048471611268
       ],
       "size": [
-        520,
-        370
+        270,
+        82
       ],
-      "flags": {},
-      "order": 0,
+      "flags": {
+        "collapsed": true
+      },
+      "order": 11,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            128
-          ]
-        },
-        {
-          "name": "CLIP",
-          "type": "CLIP",
-          "links": [
-            136
-          ]
-        },
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [
-            149
-          ]
-        },
-        {
-          "name": "LATENT_UPSCALE_MODEL",
-          "type": "LATENT_UPSCALE_MODEL",
-          "links": [
-            138
-          ]
-        },
-        {
-          "name": "VAE_1",
-          "type": "VAE",
-          "links": [
-            148
-          ]
-        },
-        {
-          "name": "VAE_2",
-          "type": "VAE",
-          "links": [
-            129
-          ]
-        },
-        {
-          "name": "MODEL_1",
-          "type": "MODEL",
-          "links": []
+          "name": "anything",
+          "type": "*",
+          "link": 154
         }
       ],
+      "outputs": [],
       "properties": {
-        "proxyWidgets": [
-          [
-            "57",
-            "unet_name"
-          ],
-          [
-            "20",
-            "vae_name"
-          ],
-          [
-            "7",
-            "vae_name"
-          ],
-          [
-            "51",
-            "lora_name"
-          ],
-          [
-            "6",
-            "clip_name1"
-          ],
-          [
-            "6",
-            "clip_name2"
-          ],
-          [
-            "8",
-            "model_name"
-          ],
-          [
-            "19",
-            "vae_name"
-          ],
-          [
-            "21",
-            "lora_name"
-          ]
-        ],
-        "cnr_id": "comfy-core",
-        "ver": "0.25.0",
+        "cnr_id": "comfyui_layerstyle",
+        "ver": "d94bef1ee5ed3656f5ff1bb2830a4ffd94f40935",
+        "Node name for S&R": "LayerUtility: PurgeVRAM",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
           "version": "7.8"
         }
       },
-      "widgets_values": [],
-      "color": "#1A0D3AFF"
+      "widgets_values": [
+        true,
+        true
+      ],
+      "color": "rgba(38, 73, 116, 0.7)"
+    },
+    {
+      "id": 3,
+      "type": "VHS_VideoCombine",
+      "pos": [
+        4835.62472770757,
+        1567.1997566084672
+      ],
+      "size": [
+        481.77408187464425,
+        809.7740818746443
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 145
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 161
+        },
+        {
+          "name": "meta_batch",
+          "shape": 7,
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Filenames",
+          "type": "VHS_FILENAMES",
+          "links": null
+        }
+      ],
+      "title": "Seed Scout 2",
+      "properties": {
+        "cnr_id": "comfyui-workflow-encrypt",
+        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
+        "Node name for S&R": "VHS_VideoCombine",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "Muse/Video/SeedScout2/MCvideoScout2",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 17,
+        "save_metadata": false,
+        "trim_to_audio": false,
+        "pingpong": false,
+        "save_output": true,
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "MCvideoScout2_00187-audio.mp4",
+            "subfolder": "Muse\\Video\\SeedScout2",
+            "type": "output",
+            "format": "video/h264-mp4",
+            "frame_rate": 24,
+            "workflow": "MCvideoScout2_00187.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\SeedScout2\\MCvideoScout2_00187-audio.mp4"
+          }
+        }
+      },
+      "color": "#0D3A1AFF"
+    },
+    {
+      "id": 4,
+      "type": "VHS_VideoCombine",
+      "pos": [
+        5348.48293410842,
+        1567.1997566084676
+      ],
+      "size": [
+        481.77408187464425,
+        809.7740818746443
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 146
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 162
+        },
+        {
+          "name": "meta_batch",
+          "shape": 7,
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Filenames",
+          "type": "VHS_FILENAMES",
+          "links": null
+        }
+      ],
+      "title": "Seed Scout 3",
+      "properties": {
+        "cnr_id": "comfyui-workflow-encrypt",
+        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
+        "Node name for S&R": "VHS_VideoCombine",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "Muse/Video/SeedScout3/MCvideoScout3",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 17,
+        "save_metadata": false,
+        "trim_to_audio": false,
+        "pingpong": false,
+        "save_output": true,
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "MCvideoScout3_00187-audio.mp4",
+            "subfolder": "Muse\\Video\\SeedScout3",
+            "type": "output",
+            "format": "video/h264-mp4",
+            "frame_rate": 24,
+            "workflow": "MCvideoScout3_00187.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\SeedScout3\\MCvideoScout3_00187-audio.mp4"
+          }
+        }
+      },
+      "color": "#305BA9FF"
+    },
+    {
+      "id": 5,
+      "type": "VHS_VideoCombine",
+      "pos": [
+        4323.034684141174,
+        1565.1300188649366
+      ],
+      "size": [
+        477.6346063875833,
+        805.6346063875833
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 144
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 160
+        },
+        {
+          "name": "meta_batch",
+          "shape": 7,
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Filenames",
+          "type": "VHS_FILENAMES",
+          "links": null
+        }
+      ],
+      "title": "Seed Scout 1",
+      "properties": {
+        "cnr_id": "comfyui-workflow-encrypt",
+        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
+        "Node name for S&R": "VHS_VideoCombine",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "Muse/Video/SeedScout1/MCvideoScout1",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 17,
+        "save_metadata": false,
+        "trim_to_audio": false,
+        "pingpong": false,
+        "save_output": true,
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "MCvideoScout1_00187-audio.mp4",
+            "subfolder": "Muse\\Video\\SeedScout1",
+            "type": "output",
+            "format": "video/h264-mp4",
+            "frame_rate": 24,
+            "workflow": "MCvideoScout1_00187.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\SeedScout1\\MCvideoScout1_00187-audio.mp4"
+          }
+        }
+      },
+      "color": "#66AF20FF"
+    },
+    {
+      "id": 74,
+      "type": "LayerUtility: PurgeVRAM",
+      "pos": [
+        6057.391940312771,
+        1576.0787127150606
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "anything",
+          "type": "*",
+          "link": 159
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfyui_layerstyle",
+        "ver": "d94bef1ee5ed3656f5ff1bb2830a4ffd94f40935",
+        "Node name for S&R": "LayerUtility: PurgeVRAM",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        true,
+        true
+      ],
+      "color": "rgba(38, 73, 116, 0.7)"
+    },
+    {
+      "id": 2,
+      "type": "VHS_VideoCombine",
+      "pos": [
+        5874.8789110641565,
+        1565.1300188649366
+      ],
+      "size": [
+        481.77408187464425,
+        809.7740818746443
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 147
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 163
+        },
+        {
+          "name": "meta_batch",
+          "shape": 7,
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Filenames",
+          "type": "VHS_FILENAMES",
+          "links": [
+            159
+          ]
+        }
+      ],
+      "title": "Seed Scout 4",
+      "properties": {
+        "cnr_id": "comfyui-workflow-encrypt",
+        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
+        "Node name for S&R": "VHS_VideoCombine",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "Muse/Video/SeedScout4/MCvideoScout4",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 17,
+        "save_metadata": false,
+        "trim_to_audio": false,
+        "pingpong": false,
+        "save_output": true,
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "MCvideoScout4_00187-audio.mp4",
+            "subfolder": "Muse\\Video\\SeedScout4",
+            "type": "output",
+            "format": "video/h264-mp4",
+            "frame_rate": 24,
+            "workflow": "MCvideoScout4_00187.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\SeedScout4\\MCvideoScout4_00187-audio.mp4"
+          }
+        }
+      },
+      "color": "#2B628AFF"
+    },
+    {
+      "id": 77,
+      "type": "Note",
+      "pos": [
+        3300.834780791857,
+        1207.8352893860265
+      ],
+      "size": [
+        528.9359712830801,
+        272.976375323482
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Note: If you want to use SEED HUNT, toggle the seed_hunt button to TRUE. Then generate your clip. Choose your preffered seed and then hit Seed 1,2,3,4 on the Timeline UI. The workflow will then generate stage 2 LTX sampler and complete with your chosen seed.\n\nTo use the regular LTX Director without seed hunt, toggle seed_hunt to off."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 73,
       "type": "VHS_VideoCombine",
       "pos": [
-        6955.164651345676,
-        1728.9347477626525
+        7016.564465200679,
+        1798.6060221005791
       ],
       "size": [
         487.9921519908112,
-        611.2455854948313
+        613.195552794793
       ],
       "flags": {},
-      "order": 10,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
           "label": "images",
           "name": "images",
           "type": "IMAGE",
-          "link": 155
+          "link": 183
         },
         {
           "label": "audio",
@@ -250,9 +583,9 @@
           "paused": false,
           "hidden": false,
           "params": {
-            "filename": "MCvideoUP_00274-audio.mp4",
-            "workflow": "MCvideoUP_00274.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\MCvideoUP_00274-audio.mp4",
+            "filename": "MCvideoUP_00477-audio.mp4",
+            "workflow": "MCvideoUP_00477.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\MCvideoUP_00477-audio.mp4",
             "format": "video/h264-mp4",
             "subfolder": "Muse\\Video",
             "type": "output",
@@ -263,318 +596,72 @@
       "color": "#1A0D3AFF"
     },
     {
-      "id": 69,
-      "type": "SaveImage",
+      "id": 72,
+      "type": "RTXVideoSuperResolution",
       "pos": [
-        7541.2022577081225,
-        1718.6803332574834
+        7011.728262183119,
+        1601.5144498771128
       ],
       "size": [
-        584.4685223800088,
-        621.5
+        492.8283550083702,
+        130
       ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 153
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.24.0",
-        "Node name for S&R": "SaveImage",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": [
-        ""
-      ]
-    },
-    {
-      "id": 74,
-      "type": "LayerUtility: PurgeVRAM",
-      "pos": [
-        6046.099121189267,
-        1545.0234601254226
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {
-        "collapsed": true
-      },
+      "flags": {},
       "order": 13,
       "mode": 0,
       "inputs": [
         {
-          "name": "anything",
-          "type": "*",
-          "link": 159
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfyui_layerstyle",
-        "ver": "d94bef1ee5ed3656f5ff1bb2830a4ffd94f40935",
-        "Node name for S&R": "LayerUtility: PurgeVRAM",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": [
-        true,
-        true
-      ],
-      "color": "rgba(38, 73, 116, 0.7)"
-    },
-    {
-      "id": 70,
-      "type": "LayerUtility: PurgeVRAM",
-      "pos": [
-        7700.961297515637,
-        1575.048471611268
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "anything",
-          "type": "*",
-          "link": 154
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfyui_layerstyle",
-        "ver": "d94bef1ee5ed3656f5ff1bb2830a4ffd94f40935",
-        "Node name for S&R": "LayerUtility: PurgeVRAM",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": [
-        true,
-        true
-      ],
-      "color": "rgba(38, 73, 116, 0.7)"
-    },
-    {
-      "id": 3,
-      "type": "VHS_VideoCombine",
-      "pos": [
-        4835.62472770757,
-        1527.0194078025172
-      ],
-      "size": [
-        481.77408187464425,
-        334
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
           "name": "images",
           "type": "IMAGE",
-          "link": 145
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 161
-        },
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
+          "link": 186
         }
       ],
       "outputs": [
         {
-          "name": "Filenames",
-          "type": "VHS_FILENAMES",
-          "links": null
-        }
-      ],
-      "title": "Seed Scout 2",
-      "properties": {
-        "cnr_id": "comfyui-workflow-encrypt",
-        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
-        "Node name for S&R": "VHS_VideoCombine",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": {
-        "frame_rate": 24,
-        "loop_count": 0,
-        "filename_prefix": "Muse/Video/MCvideo",
-        "format": "video/h264-mp4",
-        "pix_fmt": "yuv420p",
-        "crf": 17,
-        "save_metadata": false,
-        "trim_to_audio": false,
-        "pingpong": false,
-        "save_output": false,
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MCvideo_00007-audio.mp4",
-            "subfolder": "Muse\\Video",
-            "type": "temp",
-            "format": "video/h264-mp4",
-            "frame_rate": 24,
-            "workflow": "MCvideo_00007.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\temp\\Muse\\Video\\MCvideo_00007-audio.mp4"
-          }
-        }
-      },
-      "color": "#0D3A1AFF"
-    },
-    {
-      "id": 2,
-      "type": "VHS_VideoCombine",
-      "pos": [
-        5867.879229789256,
-        1525.6458545727196
-      ],
-      "size": [
-        481.77408187464425,
-        334
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
+          "name": "upscaled_images",
           "type": "IMAGE",
-          "link": 147
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 163
-        },
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "Filenames",
-          "type": "VHS_FILENAMES",
           "links": [
-            159
+            183
           ]
         }
       ],
-      "title": "Seed Scout 4",
       "properties": {
-        "cnr_id": "comfyui-workflow-encrypt",
-        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
-        "Node name for S&R": "VHS_VideoCombine",
+        "cnr_id": "comfyui_nvidia_rtx_nodes",
+        "ver": "f13f030c3173aeaa9aeb092177716b4300038814",
+        "Node name for S&R": "RTXVideoSuperResolution",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
-          "version": "7.8"
+          "version": "7.7"
         }
       },
-      "widgets_values": {
-        "frame_rate": 24,
-        "loop_count": 0,
-        "filename_prefix": "Muse/Video/MCvideo",
-        "format": "video/h264-mp4",
-        "pix_fmt": "yuv420p",
-        "crf": 17,
-        "save_metadata": false,
-        "trim_to_audio": false,
-        "pingpong": false,
-        "save_output": false,
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MCvideo_00005-audio.mp4",
-            "subfolder": "Muse\\Video",
-            "type": "temp",
-            "format": "video/h264-mp4",
-            "frame_rate": 24,
-            "workflow": "MCvideo_00005.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\temp\\Muse\\Video\\MCvideo_00005-audio.mp4"
-          }
-        }
-      },
-      "color": "#2B628AFF"
+      "widgets_values": [
+        "target dimensions",
+        1920,
+        1088,
+        "ULTRA"
+      ],
+      "color": "#1A0D3AFF"
     },
     {
       "id": 67,
       "type": "VHS_VideoCombine",
       "pos": [
-        6406.653707255062,
-        1523.5144498771128
+        6427.993311622314,
+        1819.1091804957175
       ],
       "size": [
-        481.77408187464425,
-        601.9757450310543
+        516.8569237425254,
+        629.5522567874311
       ],
       "flags": {},
-      "order": 5,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 150
+          "link": 187
         },
         {
           "name": "audio",
@@ -628,115 +715,31 @@
           "hidden": false,
           "paused": false,
           "params": {
-            "filename": "MCvideo_00377-audio.mp4",
+            "filename": "MCvideo_00572-audio.mp4",
             "subfolder": "Muse\\Video",
             "type": "output",
             "format": "video/h264-mp4",
             "frame_rate": 24,
-            "workflow": "MCvideo_00377.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\MCvideo_00377-audio.mp4"
+            "workflow": "MCvideo_00572.png",
+            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\output\\Muse\\Video\\MCvideo_00572-audio.mp4"
           }
         }
       },
       "color": "#1A0D3AFF"
     },
     {
-      "id": 5,
-      "type": "VHS_VideoCombine",
-      "pos": [
-        4312.808540489825,
-        1531.1588832895782
-      ],
-      "size": [
-        477.6346063875833,
-        334
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 144
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 160
-        },
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "Filenames",
-          "type": "VHS_FILENAMES",
-          "links": null
-        }
-      ],
-      "title": "Seed Scout 1",
-      "properties": {
-        "cnr_id": "comfyui-workflow-encrypt",
-        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
-        "Node name for S&R": "VHS_VideoCombine",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": {
-        "frame_rate": 24,
-        "loop_count": 0,
-        "filename_prefix": "Muse/Video/MCvideo",
-        "format": "video/h264-mp4",
-        "pix_fmt": "yuv420p",
-        "crf": 17,
-        "save_metadata": false,
-        "trim_to_audio": false,
-        "pingpong": false,
-        "save_output": false,
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MCvideo_00008-audio.mp4",
-            "subfolder": "Muse\\Video",
-            "type": "temp",
-            "format": "video/h264-mp4",
-            "frame_rate": 24,
-            "workflow": "MCvideo_00008.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\temp\\Muse\\Video\\MCvideo_00008-audio.mp4"
-          }
-        }
-      },
-      "color": "#66AF20FF"
-    },
-    {
       "id": 64,
       "type": "ModelPreviewOverrideKJ",
       "pos": [
         2149.9494389000406,
-        1971.9572952180242
+        2072.0527374490835
       ],
       "size": [
         695.3067868770345,
         909.6885593546954
       ],
       "flags": {},
-      "order": 1,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -783,134 +786,176 @@
       "bgcolor": "#000"
     },
     {
-      "id": 4,
-      "type": "VHS_VideoCombine",
+      "id": 65,
+      "type": "edd480e9-2c39-46bd-9764-f461ce3ff9c9",
       "pos": [
-        5356.071972501365,
-        1523.5144498771128
+        2313.3965714890774,
+        1561.0170598022587
       ],
       "size": [
-        481.77408187464425,
-        334
+        531.8596542879977,
+        394
       ],
       "flags": {},
-      "order": 8,
+      "order": 1,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 146
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 162
-        },
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "name": "Filenames",
-          "type": "VHS_FILENAMES",
-          "links": null
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            128
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            136
+          ]
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            149
+          ]
+        },
+        {
+          "name": "LATENT_UPSCALE_MODEL",
+          "type": "LATENT_UPSCALE_MODEL",
+          "links": [
+            138
+          ]
+        },
+        {
+          "name": "VAE_1",
+          "type": "VAE",
+          "links": [
+            148
+          ]
+        },
+        {
+          "name": "VAE_2",
+          "type": "VAE",
+          "links": [
+            129
+          ]
+        },
+        {
+          "name": "MODEL_1",
+          "type": "MODEL",
+          "links": [
+            172
+          ]
         }
       ],
-      "title": "Seed Scout 3",
       "properties": {
-        "cnr_id": "comfyui-workflow-encrypt",
-        "ver": "5ec45fdac73d8bd6d732af76bbe81c94413b3e36",
-        "Node name for S&R": "VHS_VideoCombine",
+        "proxyWidgets": [
+          [
+            "57",
+            "unet_name"
+          ],
+          [
+            "20",
+            "vae_name"
+          ],
+          [
+            "7",
+            "vae_name"
+          ],
+          [
+            "51",
+            "lora_name"
+          ],
+          [
+            "6",
+            "clip_name1"
+          ],
+          [
+            "6",
+            "clip_name2"
+          ],
+          [
+            "8",
+            "model_name"
+          ],
+          [
+            "19",
+            "vae_name"
+          ],
+          [
+            "21",
+            "lora_name"
+          ],
+          [
+            "50",
+            "lora_name"
+          ]
+        ],
+        "cnr_id": "comfy-core",
+        "ver": "0.25.0",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
           "version": "7.8"
         }
       },
-      "widgets_values": {
-        "frame_rate": 24,
-        "loop_count": 0,
-        "filename_prefix": "Muse/Video/MCvideo",
-        "format": "video/h264-mp4",
-        "pix_fmt": "yuv420p",
-        "crf": 17,
-        "save_metadata": false,
-        "trim_to_audio": false,
-        "pingpong": false,
-        "save_output": false,
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MCvideo_00006-audio.mp4",
-            "subfolder": "Muse\\Video",
-            "type": "temp",
-            "format": "video/h264-mp4",
-            "frame_rate": 24,
-            "workflow": "MCvideo_00006.png",
-            "fullpath": "E:\\Muse Collective\\ComfyUI-Prime-April26\\ComfyUI-Easy-Install\\ComfyUI\\temp\\Muse\\Video\\MCvideo_00006-audio.mp4"
-          }
-        }
-      },
-      "color": "#305BA9FF"
+      "widgets_values": [],
+      "color": "#1A0D3AFF"
     },
     {
-      "id": 72,
-      "type": "RTXVideoSuperResolution",
+      "id": 89,
+      "type": "MuseColorMatchBatched",
       "pos": [
-        6973.980449014136,
-        1523.5144498771128
+        6528.759664118576,
+        1556.420094351268
       ],
       "size": [
-        492.8283550083702,
-        130
+        315.32421875,
+        198
       ],
       "flags": {},
-      "order": 3,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 156
+          "link": 184
+        },
+        {
+          "name": "reference",
+          "type": "IMAGE",
+          "link": 185
         }
       ],
       "outputs": [
         {
-          "name": "upscaled_images",
+          "name": "images",
           "type": "IMAGE",
           "links": [
-            155
+            186,
+            187
           ]
         }
       ],
       "properties": {
-        "cnr_id": "comfyui_nvidia_rtx_nodes",
-        "ver": "f13f030c3173aeaa9aeb092177716b4300038814",
-        "Node name for S&R": "RTXVideoSuperResolution",
+        "Node name for S&R": "MuseColorMatchBatched",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
-          "version": "7.7"
+          "version": "7.8"
         }
       },
       "widgets_values": [
-        "target dimensions",
-        1920,
-        1080,
-        "ULTRA"
+        "mkl",
+        0.75,
+        4,
+        1,
+        "float16",
+        true
       ],
       "color": "#1A0D3AFF"
     },
@@ -918,8 +963,8 @@
       "id": 71,
       "type": "ImageFromBatch",
       "pos": [
-        7527.784212293744,
-        1547.5144498771128
+        7533.866887298289,
+        1601.5144498771128
       ],
       "size": [
         455.9713513386305,
@@ -960,21 +1005,67 @@
       "widgets_values": [
         -1,
         1
-      ]
+      ],
+      "color": "#1A0D3AFF"
+    },
+    {
+      "id": 69,
+      "type": "SaveImage",
+      "pos": [
+        7533.866887298289,
+        1819.1091804957175
+      ],
+      "size": [
+        584.4685223800088,
+        621.5
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 153
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.24.0",
+        "Node name for S&R": "SaveImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        ""
+      ],
+      "color": "#1A0D3AFF"
     },
     {
       "id": 66,
       "type": "MuseDirectorSamplerV2",
       "pos": [
-        2892.844791123753,
-        1525.6458545727196
+        2907.6875319140117,
+        1556.420094351268
       ],
       "size": [
         1386.0386012988288,
-        1957
+        1428
       ],
       "flags": {},
-      "order": 2,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -1012,7 +1103,7 @@
           "name": "base_model",
           "shape": 7,
           "type": "MODEL",
-          "link": null
+          "link": 172
         }
       ],
       "outputs": [
@@ -1020,9 +1111,8 @@
           "name": "last_chunk_frames",
           "type": "IMAGE",
           "links": [
-            150,
-            156,
-            158
+            158,
+            184
           ]
         },
         {
@@ -1093,13 +1183,20 @@
           "links": [
             163
           ]
+        },
+        {
+          "name": "reference_image",
+          "type": "IMAGE",
+          "links": [
+            185
+          ]
         }
       ],
       "properties": {
         "cnr_id": "muse-ltx-timeline",
         "ver": "2350067bc03e3accb03dd6d300fa50984f99dd3f",
         "Node name for S&R": "MuseDirectorSamplerV2",
-        "global_prompt": "",
+        "global_prompt": "\n",
         "mainTrackEnabled": true,
         "audioTrackEnabled": true,
         "motionTrackEnabled": true,
@@ -1112,47 +1209,47 @@
         "use_custom_motion": true,
         "frame_rate": 24,
         "display_mode": "seconds",
-        "custom_width": 1280,
-        "custom_height": 704,
+        "custom_width": 1920,
+        "custom_height": 1088,
         "resize_method": "maintain aspect ratio",
         "divisible_by": 32,
         "img_compression": 18,
         "guide_strength": "1.00",
-        "local_prompts": "A parked SUV. The camera does a 360 degree orbit around the car to show every angle.\nthe ambient sounds of the countryside can be heard as the car rotates",
-        "segment_lengths": "240",
-        "timeline_data": "{\"mainTrackEnabled\":true,\"audioTrackEnabled\":true,\"motionTrackEnabled\":true,\"propHeight\":90,\"globalPropHeight\":181,\"showFilenames\":true,\"overrideAudio\":false,\"lipsync\":true,\"global_prompt\":\"\",\"retake_global_prompt\":\"\",\"retakeMode\":false,\"retakeStart\":24,\"retakeLength\":48,\"retakePrompt\":\"\",\"retakeStrength\":1,\"retakeVideo\":null,\"normalStartFrame\":0,\"normalDurationFrames\":240,\"segments\":[{\"id\":\"1783448021990lm5g4\",\"start\":0,\"length\":240,\"prompt\":\"A parked SUV. The camera does a 360 degree orbit around the car to show every angle.\\nthe ambient sounds of the countryside can be heard as the car rotates\",\"type\":\"image\",\"imageFile\":\"whatdreamscost/grey_00004_.png\",\"imageB64\":\"/api/view?filename=grey_00004_.png&type=input&subfolder=whatdreamscost\",\"isEndFrame\":false}],\"motionSegments\":[],\"audioSegments\":[],\"bgAudioSegments\":[],\"bgAudioVolume\":1}",
+        "local_prompts": "[VISUAL] Subtle, natural micro-movements — a soft blink, the smile settling from broad to relaxed and warm, slight head tilt as if listening to a reply. Eyes stay engaged with camera throughout.\n[CINEMATOGRAPHY] Camera locked static, no movement — this is a direct, intimate conversational frame, let the performance carry it.\n[CHARACTER MOTION] Gentle shoulder shift and a small hand movement toward the mic stand, natural conversational body language, breathing visible in subtle chest movement.\n[SOUNDS] Quiet office ambience, soft room tone under the mic.",
+        "segment_lengths": "1913",
+        "timeline_data": "{\"mainTrackEnabled\":true,\"audioTrackEnabled\":true,\"motionTrackEnabled\":true,\"propHeight\":231,\"globalPropHeight\":235,\"showFilenames\":true,\"overrideAudio\":false,\"lipsync\":true,\"global_prompt\":\"\\n\",\"retake_global_prompt\":\"\",\"retakeMode\":false,\"retakeStart\":24,\"retakeLength\":48,\"retakePrompt\":\"\",\"retakeStrength\":1,\"retakeVideo\":null,\"normalStartFrame\":2016,\"normalDurationFrames\":1913,\"segments\":[{\"id\":\"17845821648147mxcp\",\"start\":0,\"length\":3929,\"prompt\":\"[VISUAL] Subtle, natural micro-movements — a soft blink, the smile settling from broad to relaxed and warm, slight head tilt as if listening to a reply. Eyes stay engaged with camera throughout.\\n[CINEMATOGRAPHY] Camera locked static, no movement — this is a direct, intimate conversational frame, let the performance carry it.\\n[CHARACTER MOTION] Gentle shoulder shift and a small hand movement toward the mic stand, natural conversational body language, breathing visible in subtle chest movement.\\n[SOUNDS] Quiet office ambience, soft room tone under the mic.\",\"type\":\"image\",\"imageFile\":\"whatdreamscost/clipboard.png\",\"imageB64\":\"/api/view?filename=clipboard.png&type=input&subfolder=whatdreamscost\",\"isEndFrame\":false}],\"motionSegments\":[],\"audioSegments\":[{\"id\":\"17845821832099n3vk\",\"type\":\"audio\",\"start\":0,\"length\":3929,\"trimStart\":0,\"audioDurationFrames\":3929,\"audioFile\":\"whatdreamscost/Welcome to Muse Collective V2.m4a\",\"fileName\":\"Welcome to Muse Collective V2.m4a\",\"waveformPeaks\":[0.005477005150169134,0.25989022850990295,0.1486925482749939,0.06387164443731308,0.06708924472332001,0.1039460226893425,0.1602369099855423,0.17818400263786316,0.13696523010730743,0.10184014588594437,0.049146343022584915,0.05619683489203453,0.15002834796905518,0.12369297444820404,0.15594680607318878,0.11682659387588501,0.07568278908729553,0.0513298362493515,0.05429050698876381,0.0551559180021286,0.0699322447180748,0.07279668003320694,0.09810842573642731,0.0573415644466877,0.05222763493657112,0.143844336271286,0.20092922449111938,0.20760305225849152,0.11381053924560547,0.044929224997758865,0.07730422168970108,0.08045508712530136,0.07163136452436447,0.09884871542453766,0.09713452309370041,0.10070165991783142,0.04771389812231064,0.07809730619192123,0.0006731880712322891,0.11293714493513107,0.037642545998096466,0.11304844915866852,0.11936669796705246,0.12573546171188354,0.03797277808189392,0.057592861354351044,0.08685625344514847,0.07606427371501923,0.10977481305599213,0.06446235626935959,0.0824451744556427,0.09166652709245682,0.1317911595106125,0.11906397342681885,0.09814533591270447,0.08213293552398682,0.06610409915447235,0.0038418383337557316,0.08306185156106949,0.09479868412017822,0.0877978578209877,0.05433560162782669,0.06884431838989258,0.019804753363132477,0.09130124747753143,0.10293134301900864,0.08149336278438568,0.01312258467078209,0.09097578376531601,0.11211943626403809,0.09191455692052841,0.054704174399375916,0.1503642499446869,0.1990993320941925,0.26355230808258057,0.17229579389095306,0.08621129393577576,0.06440553069114685,0.0429232157766819,0.13495095074176788,0.06797529757022858,0.12599040567874908,0.1335367113351822,0.10638394951820374,0.0916546955704689,0.07057821750640869,0.08127091825008392,0.05951150134205818,0.02696285955607891,0.09218311309814453,0.06643512099981308,0.06022315472364426,0.04756126180291176,0.09831835329532623,0.05398552492260933,0.07241992652416229,0.05246979743242264,0.006236687768250704,0.1450788825750351,0.23620885610580444,0.09412216395139694,0.11447347700595856,0.07382496446371078,0.0402962863445282,0.05578717589378357,0.17317992448806763,0.09841930121183395,0.1651104837656021,0.35189980268478394,0.11281558871269226,0.046966515481472015,0.03463752940297127,0.12769725918769836,0.11663010716438293,0.055331386625766754,0.06404578685760498,0.024858597666025162,0.23808585107326508,0.12711773812770844,0.15244732797145844,0.06171559914946556,0.0400930717587471,0.08021903783082962,0.11080306768417358,0.09569094330072403,0.07137899100780487,0.05060615763068199,0.05458349734544754,0.06747087091207504,0.09508372843265533,0.07713983952999115,0.030883511528372765,0.0349239781498909,0.7377736568450928,0.1268635094165802,0.09762174636125565,0.04390031099319458,0.16327428817749023,0.13868169486522675,0.08380567282438278,0.14059719443321228,0.08251798152923584,0.07506503909826279,0.06636913865804672,0.04927261546254158,0.31406837701797485,0.09843414276838303,0.08146219700574875,0.07938627898693085,0.06004226580262184,0.07298586517572403,0.06981703639030457,0.08579737693071365,0.11669586598873138,0.05977596715092659,0.06686877459287643,0.09010531008243561,0.22125332057476044,0.07013469934463501,0.0843876451253891,0.05560272932052612,0.12089349329471588,0.10105055570602417,0.0866427794098854,0.05730735883116722,0.10418099164962769,0.07133401185274124,0.07685587555170059,0.06310907006263733,0.04480278491973877,0.07047461718320847,0.07245522737503052,0.10661651939153671,0.068231500685215,0.09081286936998367,0.10259657353162766,0.07716148346662521,0.08061213046312332,0.06060570478439331,0.05458792671561241,0.07779975235462189,0.058105774223804474,0.04235323145985603,0.04284883290529251,0.1580755114555359,0.16285787522792816,0.1174837201833725,0.08160271495580673,0.05596853792667389,0.1529318243265152,0.0945076122879982,0.09828844666481018,0.12639464437961578,0.10930773615837097,0.06734542548656464,0.005368004087358713,0.05663345381617546,0.004460898693650961,0.0003392633225303143,0.010078799910843372]}],\"bgAudioSegments\":[],\"bgAudioVolume\":1.15}",
         "epsilon": 0.001,
-        "start_second": 0,
-        "end_second": 10,
-        "duration_seconds": 10,
-        "start_frame": 0,
-        "end_frame": 240,
-        "duration_frames": 240,
+        "start_second": 84,
+        "end_second": 163.708,
+        "duration_seconds": 79.708,
+        "start_frame": 2016,
+        "end_frame": 3929,
+        "duration_frames": 1913,
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
           "version": "7.8"
         },
-        "propHeight": 90,
-        "globalPropHeight": 181,
+        "propHeight": 231,
+        "globalPropHeight": 235,
         "generate_audio": false,
         "custom_audio_on": true,
         "motion_guide_on": false,
-        "chunk_duration_seconds": 10,
-        "auto_chunk_threshold": 10,
+        "chunk_duration_seconds": 25,
+        "auto_chunk_threshold": 25,
         "carry_frames": 73,
         "carry_strength": 1,
         "crossfade_frames": 0,
         "ic_lora_name": "None",
-        "ic_lora_strength": 1,
+        "ic_lora_strength": 0.5,
         "stage1_steps": 8,
         "stage2_steps": 4,
         "stage2_denoise": 0.42,
         "cfg": 1,
-        "seed": 676565325371392,
+        "seed": 42,
         "control_after_generate": "fixed",
         "filename_prefix": "muse",
-        "bg_volume": 1,
+        "bg_volume": 1.15,
         "guide_scale_by": 0.5,
         "guide_scale_by_s2": 1,
         "guide_upscale_method": "bicubic",
@@ -1163,38 +1260,38 @@
         "guide_tile_size": 256,
         "guide_tile_overlap": 64,
         "timeline_ui": "",
-        "seed_hunt": true,
+        "seed_hunt": false,
         "seed_hunt_steps": 6,
         "seed_hunt_duration_frames": 121,
-        "seed_hunt_1": 1,
-        "seed_hunt_2": 2,
-        "seed_hunt_3": 3,
-        "seed_hunt_4": 4,
+        "seed_hunt_1": 6,
+        "seed_hunt_2": 8,
+        "seed_hunt_3": 10,
+        "seed_hunt_4": 12,
         "use_seed_hunt_1": false,
         "use_seed_hunt_2": false,
         "use_seed_hunt_3": false,
         "use_seed_hunt_4": false,
         "has_serialized_properties": true,
         "retakeMode": false,
-        "seed_hunt_scale": 0.25
+        "seed_hunt_scale": 0.5
       },
       "widgets_values": [
-        0,
-        10,
-        10,
-        0,
-        240,
-        240,
-        "{\"mainTrackEnabled\":true,\"audioTrackEnabled\":true,\"motionTrackEnabled\":true,\"propHeight\":90,\"globalPropHeight\":181,\"showFilenames\":true,\"overrideAudio\":false,\"lipsync\":true,\"global_prompt\":\"\",\"retake_global_prompt\":\"\",\"retakeMode\":false,\"retakeStart\":24,\"retakeLength\":48,\"retakePrompt\":\"\",\"retakeStrength\":1,\"retakeVideo\":null,\"normalStartFrame\":0,\"normalDurationFrames\":240,\"segments\":[{\"id\":\"1783448021990lm5g4\",\"start\":0,\"length\":240,\"prompt\":\"A parked SUV. The camera does a 360 degree orbit around the car to show every angle.\\nthe ambient sounds of the countryside can be heard as the car rotates\",\"type\":\"image\",\"imageFile\":\"whatdreamscost/grey_00004_.png\",\"imageB64\":\"/api/view?filename=grey_00004_.png&type=input&subfolder=whatdreamscost\",\"isEndFrame\":false}],\"motionSegments\":[],\"audioSegments\":[],\"bgAudioSegments\":[],\"bgAudioVolume\":1}",
-        "A parked SUV. The camera does a 360 degree orbit around the car to show every angle.\nthe ambient sounds of the countryside can be heard as the car rotates",
-        "240",
-        "",
+        84,
+        163.708,
+        79.708,
+        2016,
+        3929,
+        1913,
+        "{\"mainTrackEnabled\":true,\"audioTrackEnabled\":true,\"motionTrackEnabled\":true,\"propHeight\":231,\"globalPropHeight\":235,\"showFilenames\":true,\"overrideAudio\":false,\"lipsync\":true,\"global_prompt\":\"\\n\",\"retake_global_prompt\":\"\",\"retakeMode\":false,\"retakeStart\":24,\"retakeLength\":48,\"retakePrompt\":\"\",\"retakeStrength\":1,\"retakeVideo\":null,\"normalStartFrame\":2016,\"normalDurationFrames\":1913,\"segments\":[{\"id\":\"17845821648147mxcp\",\"start\":0,\"length\":3929,\"prompt\":\"[VISUAL] Subtle, natural micro-movements — a soft blink, the smile settling from broad to relaxed and warm, slight head tilt as if listening to a reply. Eyes stay engaged with camera throughout.\\n[CINEMATOGRAPHY] Camera locked static, no movement — this is a direct, intimate conversational frame, let the performance carry it.\\n[CHARACTER MOTION] Gentle shoulder shift and a small hand movement toward the mic stand, natural conversational body language, breathing visible in subtle chest movement.\\n[SOUNDS] Quiet office ambience, soft room tone under the mic.\",\"type\":\"image\",\"imageFile\":\"whatdreamscost/clipboard.png\",\"imageB64\":\"/api/view?filename=clipboard.png&type=input&subfolder=whatdreamscost\",\"isEndFrame\":false}],\"motionSegments\":[],\"audioSegments\":[{\"id\":\"17845821832099n3vk\",\"type\":\"audio\",\"start\":0,\"length\":3929,\"trimStart\":0,\"audioDurationFrames\":3929,\"audioFile\":\"whatdreamscost/Welcome to Muse Collective V2.m4a\",\"fileName\":\"Welcome to Muse Collective V2.m4a\",\"waveformPeaks\":[0.005477005150169134,0.25989022850990295,0.1486925482749939,0.06387164443731308,0.06708924472332001,0.1039460226893425,0.1602369099855423,0.17818400263786316,0.13696523010730743,0.10184014588594437,0.049146343022584915,0.05619683489203453,0.15002834796905518,0.12369297444820404,0.15594680607318878,0.11682659387588501,0.07568278908729553,0.0513298362493515,0.05429050698876381,0.0551559180021286,0.0699322447180748,0.07279668003320694,0.09810842573642731,0.0573415644466877,0.05222763493657112,0.143844336271286,0.20092922449111938,0.20760305225849152,0.11381053924560547,0.044929224997758865,0.07730422168970108,0.08045508712530136,0.07163136452436447,0.09884871542453766,0.09713452309370041,0.10070165991783142,0.04771389812231064,0.07809730619192123,0.0006731880712322891,0.11293714493513107,0.037642545998096466,0.11304844915866852,0.11936669796705246,0.12573546171188354,0.03797277808189392,0.057592861354351044,0.08685625344514847,0.07606427371501923,0.10977481305599213,0.06446235626935959,0.0824451744556427,0.09166652709245682,0.1317911595106125,0.11906397342681885,0.09814533591270447,0.08213293552398682,0.06610409915447235,0.0038418383337557316,0.08306185156106949,0.09479868412017822,0.0877978578209877,0.05433560162782669,0.06884431838989258,0.019804753363132477,0.09130124747753143,0.10293134301900864,0.08149336278438568,0.01312258467078209,0.09097578376531601,0.11211943626403809,0.09191455692052841,0.054704174399375916,0.1503642499446869,0.1990993320941925,0.26355230808258057,0.17229579389095306,0.08621129393577576,0.06440553069114685,0.0429232157766819,0.13495095074176788,0.06797529757022858,0.12599040567874908,0.1335367113351822,0.10638394951820374,0.0916546955704689,0.07057821750640869,0.08127091825008392,0.05951150134205818,0.02696285955607891,0.09218311309814453,0.06643512099981308,0.06022315472364426,0.04756126180291176,0.09831835329532623,0.05398552492260933,0.07241992652416229,0.05246979743242264,0.006236687768250704,0.1450788825750351,0.23620885610580444,0.09412216395139694,0.11447347700595856,0.07382496446371078,0.0402962863445282,0.05578717589378357,0.17317992448806763,0.09841930121183395,0.1651104837656021,0.35189980268478394,0.11281558871269226,0.046966515481472015,0.03463752940297127,0.12769725918769836,0.11663010716438293,0.055331386625766754,0.06404578685760498,0.024858597666025162,0.23808585107326508,0.12711773812770844,0.15244732797145844,0.06171559914946556,0.0400930717587471,0.08021903783082962,0.11080306768417358,0.09569094330072403,0.07137899100780487,0.05060615763068199,0.05458349734544754,0.06747087091207504,0.09508372843265533,0.07713983952999115,0.030883511528372765,0.0349239781498909,0.7377736568450928,0.1268635094165802,0.09762174636125565,0.04390031099319458,0.16327428817749023,0.13868169486522675,0.08380567282438278,0.14059719443321228,0.08251798152923584,0.07506503909826279,0.06636913865804672,0.04927261546254158,0.31406837701797485,0.09843414276838303,0.08146219700574875,0.07938627898693085,0.06004226580262184,0.07298586517572403,0.06981703639030457,0.08579737693071365,0.11669586598873138,0.05977596715092659,0.06686877459287643,0.09010531008243561,0.22125332057476044,0.07013469934463501,0.0843876451253891,0.05560272932052612,0.12089349329471588,0.10105055570602417,0.0866427794098854,0.05730735883116722,0.10418099164962769,0.07133401185274124,0.07685587555170059,0.06310907006263733,0.04480278491973877,0.07047461718320847,0.07245522737503052,0.10661651939153671,0.068231500685215,0.09081286936998367,0.10259657353162766,0.07716148346662521,0.08061213046312332,0.06060570478439331,0.05458792671561241,0.07779975235462189,0.058105774223804474,0.04235323145985603,0.04284883290529251,0.1580755114555359,0.16285787522792816,0.1174837201833725,0.08160271495580673,0.05596853792667389,0.1529318243265152,0.0945076122879982,0.09828844666481018,0.12639464437961578,0.10930773615837097,0.06734542548656464,0.005368004087358713,0.05663345381617546,0.004460898693650961,0.0003392633225303143,0.010078799910843372]}],\"bgAudioSegments\":[],\"bgAudioVolume\":1.15}",
+        "[VISUAL] Subtle, natural micro-movements — a soft blink, the smile settling from broad to relaxed and warm, slight head tilt as if listening to a reply. Eyes stay engaged with camera throughout.\n[CINEMATOGRAPHY] Camera locked static, no movement — this is a direct, intimate conversational frame, let the performance carry it.\n[CHARACTER MOTION] Gentle shoulder shift and a small hand movement toward the mic stand, natural conversational body language, breathing visible in subtle chest movement.\n[SOUNDS] Quiet office ambience, soft room tone under the mic.",
+        "1913",
+        "\n",
         "1.00",
         0.001,
         24,
         "seconds",
-        1280,
-        704,
+        1920,
+        1088,
         "maintain aspect ratio",
         32,
         18,
@@ -1202,21 +1299,21 @@
         true,
         true,
         false,
-        10,
-        10,
+        25,
+        25,
         73,
         1,
         0,
         "None",
-        1,
+        0.5,
         8,
         4,
         0.42,
         1,
-        676565325371392,
+        42,
         "fixed",
         "muse",
-        1,
+        1.15,
         0.5,
         1,
         "bicubic",
@@ -1227,13 +1324,13 @@
         256,
         64,
         "",
-        true,
+        false,
         6,
-        0.25,
-        1,
-        2,
-        3,
-        4,
+        0.5,
+        6,
+        8,
+        10,
+        12,
         false,
         false,
         false,
@@ -1326,14 +1423,6 @@
       "VAE"
     ],
     [
-      150,
-      66,
-      0,
-      67,
-      0,
-      "IMAGE"
-    ],
-    [
       151,
       66,
       1,
@@ -1362,22 +1451,6 @@
       71,
       0,
       70,
-      0,
-      "IMAGE"
-    ],
-    [
-      155,
-      72,
-      0,
-      73,
-      0,
-      "IMAGE"
-    ],
-    [
-      156,
-      66,
-      0,
-      72,
       0,
       "IMAGE"
     ],
@@ -1436,6 +1509,54 @@
       2,
       1,
       "AUDIO"
+    ],
+    [
+      172,
+      65,
+      6,
+      66,
+      6,
+      "MODEL"
+    ],
+    [
+      183,
+      72,
+      0,
+      73,
+      0,
+      "IMAGE"
+    ],
+    [
+      184,
+      66,
+      0,
+      89,
+      0,
+      "IMAGE"
+    ],
+    [
+      185,
+      66,
+      11,
+      89,
+      1,
+      "IMAGE"
+    ],
+    [
+      186,
+      89,
+      0,
+      72,
+      0,
+      "IMAGE"
+    ],
+    [
+      187,
+      89,
+      0,
+      67,
+      0,
+      "IMAGE"
     ]
   ],
   "groups": [],
@@ -1446,8 +1567,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 1,
-          "lastNodeId": 75,
-          "lastLinkId": 163,
+          "lastNodeId": 92,
+          "lastLinkId": 191,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -1555,7 +1676,7 @@
             "name": "MODEL_1",
             "type": "MODEL",
             "linkIds": [
-              111
+              171
             ],
             "pos": [
               727.8928581304997,
@@ -1565,49 +1686,6 @@
         ],
         "widgets": [],
         "nodes": [
-          {
-            "id": 6,
-            "type": "DualCLIPLoader",
-            "pos": [
-              311.3092698232663,
-              0
-            ],
-            "size": [
-              320,
-              130
-            ],
-            "flags": {},
-            "order": 0,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "localized_name": "CLIP",
-                "name": "CLIP",
-                "type": "CLIP",
-                "links": [
-                  3
-                ]
-              }
-            ],
-            "title": "CLIP Loader",
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.25.0",
-              "Node name for S&R": "DualCLIPLoader",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "gemma_3_12B_it_fp4_mixed.safetensors",
-              "ltx-2.3_text_projection_bf16.safetensors",
-              "ltxv",
-              "default"
-            ]
-          },
           {
             "id": 7,
             "type": "VAELoader",
@@ -1649,46 +1727,6 @@
             ]
           },
           {
-            "id": 8,
-            "type": "LatentUpscaleModelLoader",
-            "pos": [
-              323.89285813049963,
-              202.14275718828304
-            ],
-            "size": [
-              320,
-              60
-            ],
-            "flags": {},
-            "order": 2,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "localized_name": "LATENT_UPSCALE_MODEL",
-                "name": "LATENT_UPSCALE_MODEL",
-                "type": "LATENT_UPSCALE_MODEL",
-                "links": [
-                  6
-                ]
-              }
-            ],
-            "title": "Latent Upscale Model",
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.25.0",
-              "Node name for S&R": "LatentUpscaleModelLoader",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
-            ]
-          },
-          {
             "id": 19,
             "type": "VAELoaderKJ",
             "pos": [
@@ -1700,7 +1738,7 @@
               110
             ],
             "flags": {},
-            "order": 3,
+            "order": 2,
             "mode": 0,
             "inputs": [],
             "outputs": [
@@ -1744,7 +1782,7 @@
               60
             ],
             "flags": {},
-            "order": 4,
+            "order": 3,
             "mode": 0,
             "inputs": [],
             "outputs": [
@@ -1773,55 +1811,6 @@
             ]
           },
           {
-            "id": 50,
-            "type": "LoraLoaderModelOnly",
-            "pos": [
-              1070.4558989031548,
-              -171.76281220791233
-            ],
-            "size": [
-              340,
-              100
-            ],
-            "flags": {},
-            "order": 11,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "model",
-                "name": "model",
-                "type": "MODEL",
-                "link": 109
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "MODEL",
-                "name": "MODEL",
-                "type": "MODEL",
-                "links": [
-                  110,
-                  111
-                ]
-              }
-            ],
-            "title": "LoRA Loader (Model Only)",
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.25.0",
-              "Node name for S&R": "LoraLoaderModelOnly",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "LTX2.3\\LTX2.3_Crisp_Enhance.safetensors",
-              1
-            ]
-          },
-          {
             "id": 21,
             "type": "LoraLoaderModelOnly",
             "pos": [
@@ -1833,7 +1822,7 @@
               100
             ],
             "flags": {},
-            "order": 10,
+            "order": 12,
             "mode": 0,
             "inputs": [
               {
@@ -1870,54 +1859,6 @@
             ]
           },
           {
-            "id": 51,
-            "type": "LoraLoaderModelOnly",
-            "pos": [
-              291.3092698232663,
-              -145
-            ],
-            "size": [
-              340,
-              100
-            ],
-            "flags": {},
-            "order": 9,
-            "mode": 0,
-            "inputs": [
-              {
-                "localized_name": "model",
-                "name": "model",
-                "type": "MODEL",
-                "link": 114
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "MODEL",
-                "name": "MODEL",
-                "type": "MODEL",
-                "links": [
-                  107
-                ]
-              }
-            ],
-            "title": "LoRA Loader (Model Only)",
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.25.0",
-              "Node name for S&R": "LoraLoaderModelOnly",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "LTX2.3\\LTX-2.3-22b-AV-LoRA-talking-head-v1.safetensors",
-              1
-            ]
-          },
-          {
             "id": 54,
             "type": "LoraLoaderModelOnly",
             "pos": [
@@ -1929,7 +1870,7 @@
               100
             ],
             "flags": {},
-            "order": 8,
+            "order": 10,
             "mode": 4,
             "inputs": [
               {
@@ -1977,7 +1918,7 @@
               106
             ],
             "flags": {},
-            "order": 7,
+            "order": 9,
             "mode": 0,
             "inputs": [
               {
@@ -1996,7 +1937,7 @@
                 "dir": 3,
                 "name": "any_03",
                 "type": "*",
-                "link": null
+                "link": 191
               },
               {
                 "dir": 3,
@@ -2005,6 +1946,7 @@
                 "link": null
               },
               {
+                "dir": 3,
                 "name": "any_05",
                 "type": "*",
                 "link": null
@@ -2018,7 +1960,8 @@
                 "shape": 3,
                 "type": "*",
                 "links": [
-                  118
+                  118,
+                  171
                 ]
               }
             ],
@@ -2034,18 +1977,154 @@
             "widgets_values": []
           },
           {
+            "id": 8,
+            "type": "LatentUpscaleModelLoader",
+            "pos": [
+              323.89285813049963,
+              202.14275718828304
+            ],
+            "size": [
+              320,
+              60
+            ],
+            "flags": {},
+            "order": 4,
+            "mode": 0,
+            "inputs": [],
+            "outputs": [
+              {
+                "localized_name": "LATENT_UPSCALE_MODEL",
+                "name": "LATENT_UPSCALE_MODEL",
+                "type": "LATENT_UPSCALE_MODEL",
+                "links": [
+                  6
+                ]
+              }
+            ],
+            "title": "Latent Upscale Model",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "LatentUpscaleModelLoader",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+            ]
+          },
+          {
+            "id": 50,
+            "type": "LoraLoaderModelOnly",
+            "pos": [
+              1070.4558989031548,
+              -171.76281220791233
+            ],
+            "size": [
+              340,
+              100
+            ],
+            "flags": {},
+            "order": 13,
+            "mode": 0,
+            "inputs": [
+              {
+                "localized_name": "model",
+                "name": "model",
+                "type": "MODEL",
+                "link": 109
+              }
+            ],
+            "outputs": [
+              {
+                "localized_name": "MODEL",
+                "name": "MODEL",
+                "type": "MODEL",
+                "links": [
+                  110
+                ]
+              }
+            ],
+            "title": "LoRA Loader (Model Only)",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "LoraLoaderModelOnly",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "LTX2.3\\LTX2.3_Crisp_Enhance.safetensors",
+              1
+            ]
+          },
+          {
+            "id": 51,
+            "type": "LoraLoaderModelOnly",
+            "pos": [
+              554.9168656516731,
+              -316.4009116585997
+            ],
+            "size": [
+              340,
+              100
+            ],
+            "flags": {},
+            "order": 11,
+            "mode": 0,
+            "inputs": [
+              {
+                "localized_name": "model",
+                "name": "model",
+                "type": "MODEL",
+                "link": 114
+              }
+            ],
+            "outputs": [
+              {
+                "localized_name": "MODEL",
+                "name": "MODEL",
+                "type": "MODEL",
+                "links": [
+                  107
+                ]
+              }
+            ],
+            "title": "LoRA Loader (Model Only)",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "LoraLoaderModelOnly",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "LTX2.3\\LTX-2.3-22b-AV-LoRA-talking-head-v1.safetensors",
+              1
+            ]
+          },
+          {
             "id": 55,
             "type": "UnetLoaderGGUF",
             "pos": [
-              -446.0555657456961,
-              -233
+              -621.3670811078777,
+              -215.76281220791233
             ],
             "size": [
               270,
               58
             ],
             "flags": {},
-            "order": 5,
+            "order": 6,
             "mode": 4,
             "inputs": [],
             "outputs": [
@@ -2073,18 +2152,150 @@
             ]
           },
           {
+            "id": 6,
+            "type": "DualCLIPLoader",
+            "pos": [
+              311.3092698232663,
+              0
+            ],
+            "size": [
+              320,
+              130
+            ],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "inputs": [],
+            "outputs": [
+              {
+                "localized_name": "CLIP",
+                "name": "CLIP",
+                "type": "CLIP",
+                "links": [
+                  3
+                ]
+              }
+            ],
+            "title": "CLIP Loader",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "DualCLIPLoader",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "gemma_3_12B_it_fp8_scaled.safetensors",
+              "ltx-2.3_text_projection_bf16.safetensors",
+              "ltxv",
+              "default"
+            ]
+          },
+          {
+            "id": 92,
+            "type": "LoraLoaderModelOnly",
+            "pos": [
+              -665.654643502455,
+              -94.4109246193535
+            ],
+            "size": [
+              340,
+              100
+            ],
+            "flags": {},
+            "order": 8,
+            "mode": 4,
+            "inputs": [
+              {
+                "localized_name": "model",
+                "name": "model",
+                "type": "MODEL",
+                "link": 190
+              }
+            ],
+            "outputs": [
+              {
+                "localized_name": "MODEL",
+                "name": "MODEL",
+                "type": "MODEL",
+                "links": [
+                  191
+                ]
+              }
+            ],
+            "title": "LoRA Loader (Model Only)",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "LoraLoaderModelOnly",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "LTX2.3\\ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+              0.7
+            ]
+          },
+          {
+            "id": 91,
+            "type": "UNETLoader",
+            "pos": [
+              -958.5714490849404,
+              -94.4109246193535
+            ],
+            "size": [
+              260.4009222432411,
+              99.639169981083
+            ],
+            "flags": {},
+            "order": 7,
+            "mode": 4,
+            "inputs": [],
+            "outputs": [
+              {
+                "localized_name": "MODEL",
+                "name": "MODEL",
+                "type": "MODEL",
+                "links": [
+                  190
+                ]
+              }
+            ],
+            "title": "UNET Loader",
+            "properties": {
+              "cnr_id": "comfy-core",
+              "ver": "0.25.0",
+              "Node name for S&R": "UNETLoader",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "version": "7.8",
+                "input_ue_unconnectable": {}
+              }
+            },
+            "widgets_values": [
+              "ltx-2-3-22b-dev_transformer_only_fp8_input_scaled.safetensors",
+              "fp8_e4m3fn"
+            ]
+          },
+          {
             "id": 57,
             "type": "UNETLoader",
             "pos": [
-              -451.0555657456961,
-              -381.0400816396827
+              -602.5012325274356,
+              -381.2204966491412
             ],
             "size": [
-              280,
-              82
+              260.4009222432411,
+              99.639169981083
             ],
             "flags": {},
-            "order": 6,
+            "order": 5,
             "mode": 0,
             "inputs": [],
             "outputs": [
@@ -2181,14 +2392,6 @@
             "type": "MODEL"
           },
           {
-            "id": 111,
-            "origin_id": 50,
-            "origin_slot": 0,
-            "target_id": -20,
-            "target_slot": 6,
-            "type": "MODEL"
-          },
-          {
             "id": 114,
             "origin_id": 54,
             "origin_slot": 0,
@@ -2219,6 +2422,30 @@
             "target_id": 54,
             "target_slot": 0,
             "type": "MODEL"
+          },
+          {
+            "id": 171,
+            "origin_id": 56,
+            "origin_slot": 0,
+            "target_id": -20,
+            "target_slot": 6,
+            "type": "*"
+          },
+          {
+            "id": 190,
+            "origin_id": 91,
+            "origin_slot": 0,
+            "target_id": 92,
+            "target_slot": 0,
+            "type": "MODEL"
+          },
+          {
+            "id": 191,
+            "origin_id": 92,
+            "origin_slot": 0,
+            "target_id": 56,
+            "target_slot": 2,
+            "type": "MODEL"
           }
         ],
         "extra": {
@@ -2231,14 +2458,15 @@
   "config": {},
   "extra": {
     "ue_links": [],
+    "links_added_by_ue": [],
     "ds": {
-      "scale": 0.5989500000000008,
+      "scale": 0.6275000000001083,
       "offset": [
-        -1909.3582765247013,
-        -1464.9005837160773
+        -1945.661693842087,
+        -1165.508759200695
       ]
     },
-    "links_added_by_ue": [],
+    "anomalous_hashes": {},
     "frontendVersion": "1.45.20",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,

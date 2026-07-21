@@ -762,12 +762,13 @@ class MuseDirectorSamplerV2:
         }
 
     RETURN_TYPES = ("IMAGE", "AUDIO", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE",
-                     "AUDIO", "AUDIO", "AUDIO", "AUDIO")
+                     "AUDIO", "AUDIO", "AUDIO", "AUDIO", "IMAGE")
     RETURN_NAMES = ("last_chunk_frames", "audio", "stage1_frames",
                      "seed_hunt_preview_1", "seed_hunt_preview_2",
                      "seed_hunt_preview_3", "seed_hunt_preview_4",
                      "seed_hunt_audio_1", "seed_hunt_audio_2",
-                     "seed_hunt_audio_3", "seed_hunt_audio_4")
+                     "seed_hunt_audio_3", "seed_hunt_audio_4",
+                     "reference_image")
     FUNCTION = "execute"
     CATEGORY = "Muse Collective"
     DESCRIPTION = (
@@ -864,7 +865,8 @@ class MuseDirectorSamplerV2:
                 dummy_audio = {"waveform": torch.zeros(1, 1, 1), "sample_rate": 44100}
                 return (dummy_frame, dummy_audio, dummy_frame,
                         previews[0], previews[1], previews[2], previews[3],
-                        previews_audio[0], previews_audio[1], previews_audio[2], previews_audio[3])
+                        previews_audio[0], previews_audio[1], previews_audio[2], previews_audio[3],
+                        dummy_frame)
             else:
                 if len(hunt_picked) > 1:
                     log.warning("[MuseDirector] Seed Hunt: more than one use_seed_hunt_N is on — "
@@ -951,6 +953,7 @@ class MuseDirectorSamplerV2:
         all_bg_waveforms = []
         audio_sample_rate = 44100
         live_pixel_frames = None
+        reference_image_out = None
         color_ref_mean = None
         color_ref_std = None
 
@@ -1005,6 +1008,9 @@ class MuseDirectorSamplerV2:
             guide_data["start_frame"] = chunk_s_frame
             guide_data["duration_frames"] = chunk_dur_frames
             guide_data["resize_method"] = resize_method
+
+            if reference_image_out is None and guide_data["images"]:
+                reference_image_out = guide_data["images"][0]
 
             motion_guide_data = _build_motion_guide_data(
                 timeline_data, chunk_s_frame, chunk_dur_frames,
@@ -1074,7 +1080,7 @@ class MuseDirectorSamplerV2:
             if live_pixel_frames is not None and ref_pixel_count > 0:
                 try:
                     import comfy.utils as _cu
-                    ref_px = live_pixel_frames[-ref_pixel_count:]
+                    ref_px = live_pixel_frames[-ref_pixel_count:].float()
                     ref_s1 = _cu.common_upscale(
                         ref_px.movedim(-1, 1), s1_w, s1_h, "bilinear", "disabled"
                     ).movedim(1, -1)
@@ -1171,7 +1177,7 @@ class MuseDirectorSamplerV2:
                     import comfy.utils as _cu2
                     s2_h = lat2["samples"].shape[3] * 32
                     s2_w = lat2["samples"].shape[4] * 32
-                    ref_px2 = live_pixel_frames[-ref_pixel_count:]
+                    ref_px2 = live_pixel_frames[-ref_pixel_count:].float()
                     ref_s2 = _cu2.common_upscale(
                         ref_px2.movedim(-1, 1), s2_w, s2_h, "bilinear", "disabled"
                     ).movedim(1, -1)
@@ -1226,12 +1232,6 @@ class MuseDirectorSamplerV2:
             if frames.ndim == 3:
                 frames = frames.unsqueeze(0)
 
-            out_path = os.path.join(output_dir, f"{filename_prefix}_{counter:05d}_{chunk_idx:03d}.mp4")
-            try:
-                _save_chunk_mp4(frames, frame_rate, out_path)
-            except Exception as exc:
-                log.warning("[MuseDirector] Chunk save failed: %s", exc)
-
             if overlap_frames > 0:
                 frames = frames[overlap_frames:]
 
@@ -1253,7 +1253,19 @@ class MuseDirectorSamplerV2:
                 color_ref_std  = _ref_frames.std(dim=(0, 1, 2)).clamp(min=1e-5)
             elif all_frames:
                 try:
-                    src = frames.float()
+                    # float16 instead of float32, and chained in-place ops
+                    # instead of each arithmetic step allocating its own new
+                    # tensor -- the original float32, non-in-place version
+                    # held ~5-6 separate full-chunk-sized tensors alive at
+                    # once (src, corrected, and the intermediates each "+"/
+                    # "*"/"-" in the expression silently created), which is
+                    # what was failing to allocate on longer chunks. This
+                    # keeps only 2 full-size tensors alive (src, corrected)
+                    # at roughly a quarter the memory each. Color-grading
+                    # math doesn't need float32 precision -- these are RGB
+                    # values in 0-1 range being averaged/rescaled, not
+                    # anything numerically sensitive.
+                    src = frames.to(torch.float16)
                     src_mean = src.mean(dim=(0, 1, 2))
                     src_std  = src.std(dim=(0, 1, 2)).clamp(min=1e-5)
                     # color_ref_mean/std were captured from chunk 0's decode —
@@ -1265,8 +1277,7 @@ class MuseDirectorSamplerV2:
                     # visibly correcting anything).
                     ref_mean = color_ref_mean.to(device=src.device, dtype=src.dtype)
                     ref_std  = color_ref_std.to(device=src.device, dtype=src.dtype)
-                    corrected = (src - src_mean) / src_std * ref_std + ref_mean
-                    corrected = corrected.clamp(0.0, 1.0)
+                    corrected = src.sub(src_mean).div_(src_std).mul_(ref_std).add_(ref_mean).clamp_(0.0, 1.0)
                     # Ease from full correction right at the chunk boundary
                     # down to a low resting correction over the first
                     # second, then hold there for the rest of the chunk.
@@ -1276,17 +1287,53 @@ class MuseDirectorSamplerV2:
                     # instead of a smooth transition.
                     ramp_len = min(int(frame_rate), frames.shape[0])
                     floor = 0.15
-                    blend = torch.full((frames.shape[0],), floor, device=frames.device, dtype=torch.float32)
-                    blend[:ramp_len] = torch.linspace(1.0, floor, ramp_len, device=frames.device)
-                    frames = (
-                        corrected * blend[:, None, None, None]
-                        + src * (1.0 - blend[:, None, None, None])
-                    ).to(all_frames[-1].dtype)
+                    blend = torch.full((frames.shape[0],), floor, device=frames.device, dtype=torch.float16)
+                    blend[:ramp_len] = torch.linspace(1.0, floor, ramp_len, device=frames.device, dtype=torch.float16)
+                    corrected.mul_(blend[:, None, None, None])
+                    src.mul_(1.0 - blend[:, None, None, None])
+                    frames = corrected.add_(src).to(all_frames[-1].dtype)
                 except Exception as exc:
                     log.warning("[MuseDirector] Color match failed: %s", exc, exc_info=True)
 
+            # Save the per-chunk safety-net file using the fully processed
+            # frames (post overlap-trim, post color-match) so it matches
+            # exactly what ends up in the real assembled output -- previously
+            # this saved before the overlap trim, which duplicated the
+            # carried-over reference frames into every chunk after the first
+            # (extra ~3s per chunk, visible repeat/stutter at every boundary).
+            out_path = os.path.join(output_dir, f"{filename_prefix}_{counter:05d}_{chunk_idx:03d}.mp4")
+            try:
+                _save_chunk_mp4(frames, frame_rate, out_path)
+            except Exception as exc:
+                log.warning("[MuseDirector] Chunk save failed: %s", exc)
+
+            # Store at float16 instead of float32 -- halves the memory of the
+            # final full-video assembly (torch.cat(all_frames, dim=0) at the
+            # end of the run), which is what crashed on an 85s/1920x1088 run
+            # (51GB requested at float32, ~25.6GB at float16). All the float
+            # math this chunk needed (trim, resize-correction, color-match
+            # blend) is already done above this point -- this is purely a
+            # storage-precision change for what's about to sit in RAM for the
+            # rest of the run, not a change to any processing.
+            frames = frames.clamp(0.0, 1.0).to(torch.float16)
+
             all_frames.append(frames)
-            cat_so_far = torch.cat(all_frames, dim=0)
+            # Only concatenate enough of the tail to cover carry_frames worth of
+            # pixels -- NOT the entire history. Re-concatenating everything
+            # generated so far, every single chunk, is what caused an unbounded
+            # (and eventually crashing) memory allocation on long videos.
+            # Walking backward until there are enough frames gives the exact
+            # same result (only the tail ever mattered) at a fraction of the
+            # memory/time cost.
+            tail_chunks = []
+            tail_len = 0
+            for f in reversed(all_frames):
+                tail_chunks.append(f)
+                tail_len += f.shape[0]
+                if tail_len >= carry_frames:
+                    break
+            tail_chunks.reverse()
+            cat_so_far = torch.cat(tail_chunks, dim=0) if len(tail_chunks) > 1 else tail_chunks[0]
             live_pixel_frames = cat_so_far[-carry_frames:].clone().cpu()
 
             # ── Ambient-only pass ───────────────────────────────────────────────
@@ -1556,12 +1603,20 @@ class MuseDirectorSamplerV2:
             except Exception as exc:
                 log.warning("[MuseDirector] Full video save failed: %s", exc)
 
+        # Once full_video exists it holds its own copy of every chunk's data --
+        # the source list is now a redundant second copy of the same frames.
+        # Free it here, before building the full-length stage1_frames preview
+        # below, instead of letting both the full Stage2 video and the full
+        # Stage1 video be resident in RAM at the same time.
+        all_frames.clear()
+
         s1_video = torch.cat(all_s1_frames, dim=0) if all_s1_frames else full_video
         _dummy_scout = torch.zeros((1, 64, 64, 3))
         _dummy_scout_audio = {"waveform": torch.zeros(1, 2, 1), "sample_rate": 44100}
         return (full_video, full_audio, s1_video,
                 _dummy_scout, _dummy_scout, _dummy_scout, _dummy_scout,
-                _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio)
+                _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio, _dummy_scout_audio,
+                reference_image_out if reference_image_out is not None else _dummy_scout)
 
     def _run_seed_hunt(
         self, model, clip, audio_vae, vae,

@@ -19,6 +19,9 @@ const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths"
   "global_prompt",
   // Audio toggles — controlled by toolbar buttons above the timeline
   "generate_audio", "custom_audio_on", "motion_guide_on",
+  // Seed Hunt candidate picker — controlled by the colored radio-group
+  // buttons above the toolbar instead of the default boolean widgets.
+  "use_seed_hunt_1", "use_seed_hunt_2", "use_seed_hunt_3", "use_seed_hunt_4",
   // Not used / internal defaults only
   "crossfade_frames", "filename_prefix", "display_mode",
   // Guide internals — sensible defaults, no need to expose
@@ -2382,6 +2385,48 @@ class TimelineEditor {
     // expose sync so node can refresh on load
     this._museToggles = [t1, t2, t3];
 
+    // ── Seed Hunt candidate picker (radio group, colors matched to each
+    // Seed Scout N preview node's own title-bar color) — replaces the four
+    // default use_seed_hunt_N boolean widgets, which allowed 0 or several
+    // candidates selected at once even though only one is ever meaningful.
+    const seedHuntRow = document.createElement("div");
+    seedHuntRow.style.cssText = "display:flex;width:100%;gap:6px;";
+    const SEED_HUNT_COLORS = ["#66AF20", "#0D3A1A", "#305BA9", "#2B628A"];
+    const SEED_HUNT_WIDGET_NAMES = ["use_seed_hunt_1", "use_seed_hunt_2", "use_seed_hunt_3", "use_seed_hunt_4"];
+    const seedHuntBtns = [];
+    const syncSeedHuntBtns = () => {
+      seedHuntBtns.forEach((btn, idx) => {
+        const w = this.node.widgets?.find(w => w.name === SEED_HUNT_WIDGET_NAMES[idx]);
+        const on = w ? !!w.value : false;
+        btn.style.background = on ? SEED_HUNT_COLORS[idx] : "#2a2a2a";
+        btn.style.color = on ? "#fff" : "#888";
+        btn.style.borderColor = on ? SEED_HUNT_COLORS[idx] : "#444";
+      });
+    };
+    SEED_HUNT_WIDGET_NAMES.forEach((name, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "pr-btn";
+      btn.style.cssText = "flex:1 1 0;padding:6px 8px;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;transition:background 0.15s;justify-content:center;";
+      btn.textContent = `Seed ${idx + 1}`;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const selfWidget = this.node.widgets?.find(w => w.name === SEED_HUNT_WIDGET_NAMES[idx]);
+        const wasOn = selfWidget ? !!selfWidget.value : false;
+        SEED_HUNT_WIDGET_NAMES.forEach((otherName, otherIdx) => {
+          const w = this.node.widgets?.find(w => w.name === otherName);
+          if (w) {
+            w.value = wasOn ? false : (otherIdx === idx);
+            if (w.callback) w.callback(w.value);
+          }
+        });
+        syncSeedHuntBtns();
+      });
+      seedHuntBtns.push(btn);
+      seedHuntRow.appendChild(btn);
+    });
+    syncSeedHuntBtns();
+    this._museSeedHuntBtns = { sync: syncSeedHuntBtns };
+
     // ── Settings show/hide toggle ────────────────────────────────────────────
     const settingsToggleBtn = document.createElement("button");
     settingsToggleBtn.className = "pr-btn";
@@ -3897,6 +3942,7 @@ class TimelineEditor {
     this.viewport.style.minWidth = "0";
     this.layoutContainer.appendChild(this.viewport);
 
+    this.wrapper.appendChild(seedHuntRow);
     this.wrapper.appendChild(toolbar);
     this.wrapper.appendChild(this.layoutContainer);
 
@@ -11964,6 +12010,9 @@ app.registerExtension({
             // Sync Muse toggle buttons to restored widget values
             if (this._timelineEditor._museToggles) {
               this._timelineEditor._museToggles.forEach(t => t.sync());
+            }
+            if (this._timelineEditor._museSeedHuntBtns) {
+              this._timelineEditor._museSeedHuntBtns.sync();
             }
           }
         }, 0);
