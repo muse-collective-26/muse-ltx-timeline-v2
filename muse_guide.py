@@ -477,6 +477,27 @@ class MuseGuide:
             negative = node_helpers.conditioning_set_values(negative, {"nghtdrp_guide_crop_latent_frames": crop_frames})
             return (positive, negative, {"samples": latent_image, "noise_mask": noise_mask}, model, float(latent_downscale_factor))
 
+        # ── Ghost Mask pre-extend ────────────────────────────────────────────
+        # Director keeps the incoming latent clean-sized and lets us pad it
+        # here (mirrors the CS source this was ported from: "the guide pads;
+        # the Director does not" — keeps video/audio lengths matched
+        # upstream). Padded region is zeros/ones (fully denoisable); the
+        # reference images below (anchored at clean_length + i) get written
+        # into it, then Director trims it back off before decode.
+        ghost_pre_extend = int((guide_data or {}).get("ghost_pre_extend", 0)) if guide_data else 0
+        if ghost_pre_extend > 0:
+            gb, gc, gf, gh, gw = latent_image.shape
+            latent_image = torch.cat(
+                [latent_image, torch.zeros((gb, gc, ghost_pre_extend, gh, gw), dtype=latent_image.dtype, device=latent_image.device)],
+                dim=2,
+            )
+            mb, mc, mf, mh, mw = noise_mask.shape
+            noise_mask = torch.cat(
+                [noise_mask, torch.ones((mb, mc, ghost_pre_extend, mh, mw), dtype=noise_mask.dtype, device=noise_mask.device)],
+                dim=2,
+            )
+            latent_length = latent_image.shape[2]
+
         # ── Standard Keyframe Guidance ────────────────────────────────────────
         images       = (guide_data or {}).get("images", [])
         insert_frames = (guide_data or {}).get("insert_frames", [])

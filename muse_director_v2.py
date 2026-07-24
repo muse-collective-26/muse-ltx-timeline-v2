@@ -465,6 +465,39 @@ def _build_guide_data(tdata: dict, start_frame: int, duration_frames: int,
     return guide_data, derived_w, derived_h
 
 
+def _build_chunk_local_prompts(tdata: dict, start_frame: int, duration_frames: int,
+                                fallback_local_prompts: str, fallback_segment_lengths: str):
+    """Scope local_prompts/segment_lengths down to only the segments overlapping this
+    chunk's (or seed-hunt scouting window's) [start_frame, start_frame+duration_frames)
+    range, with lengths clipped to the overlap. Mirrors the same overlap filter
+    _build_guide_data already uses for image guides — without this, every chunk (and
+    the seed-hunt scouting pass) was being handed all segments across the FULL timeline
+    and squeezing them proportionally into its own (smaller) window, causing later
+    segments (e.g. a bench-sit near the end) to bleed into early chunks/scouting."""
+    segs = [
+        s for s in tdata.get("segments", [])
+        if int(s.get("start", 0)) < start_frame + duration_frames
+        and int(s.get("start", 0)) + int(s.get("length", 1)) > start_frame
+    ]
+    segs.sort(key=lambda s: s["start"])
+
+    if not segs:
+        return fallback_local_prompts, fallback_segment_lengths
+
+    prompts = []
+    lengths = []
+    for s in segs:
+        seg_start = int(s.get("start", 0))
+        seg_len = int(s.get("length", 1))
+        overlap_start = max(seg_start, start_frame)
+        overlap_end = min(seg_start + seg_len, start_frame + duration_frames)
+        clipped_len = max(1, overlap_end - overlap_start)
+        prompts.append(str(s.get("prompt", "")).strip())
+        lengths.append(str(clipped_len))
+
+    return "|".join(prompts), ",".join(lengths)
+
+
 def _build_motion_guide_data(timeline_data: str, start_frame: int, duration_frames: int,
                              frame_rate: float, resize_method: str, motion_guide_on: bool):
     """Parse IC-LoRA Video track segments ('motionSegments' in the timeline JSON)
@@ -1020,9 +1053,12 @@ class MuseDirectorSamplerV2:
                      len(motion_guide_data["segments"]), motion_guide_on)
 
             # ── Build conditioning ───────────────────────────────────────────
+            chunk_local_prompts, chunk_segment_lengths = _build_chunk_local_prompts(
+                tdata, chunk_s_frame, chunk_dur_frames, local_prompts, segment_lengths,
+            )
             patched_model, positive = _encode_relay(
                 model, clip, pre_latent,
-                global_prompt, local_prompts, segment_lengths, epsilon,
+                global_prompt, chunk_local_prompts, chunk_segment_lengths, epsilon,
             )
 
             # ── Build audio waveform + latent ────────────────────────────────
@@ -1379,7 +1415,7 @@ class MuseDirectorSamplerV2:
                     all_prompts = [global_prompt] + (local_prompts if isinstance(local_prompts, list) else [local_prompts])
                     sounds_parts = []
                     for _p in all_prompts:
-                        for _m in _re.findall(r'\[SOUNDS?\][^\[]*', _p, _re.IGNORECASE):
+                        for _m in _re.findall(r'\[SOUNDS?\][^\[|]*', _p, _re.IGNORECASE):
                             sounds_parts.append(_m.strip())
                     amb_text = ' '.join(sounds_parts) if sounds_parts else "ambient background sounds"
                     amb_cond = clip.encode_from_tokens_scheduled(clip.tokenize(amb_text))
@@ -1665,8 +1701,11 @@ class MuseDirectorSamplerV2:
             frame_rate, resize_method, motion_guide_on,
         )
 
+        hunt_local_prompts, hunt_segment_lengths = _build_chunk_local_prompts(
+            tdata, start_frame, seed_hunt_duration_frames, local_prompts, segment_lengths,
+        )
         patched_model, positive = _encode_relay(
-            model, clip, pre_latent, global_prompt, local_prompts, segment_lengths, epsilon,
+            model, clip, pre_latent, global_prompt, hunt_local_prompts, hunt_segment_lengths, epsilon,
         )
 
         combined_audio = _build_combined_audio(
@@ -1747,7 +1786,7 @@ class MuseDirectorSamplerV2:
                 all_prompts = [global_prompt] + (local_prompts if isinstance(local_prompts, list) else [local_prompts])
                 sounds_parts = []
                 for _p in all_prompts:
-                    for _m in _re.findall(r'\[SOUNDS?\][^\[]*', _p, _re.IGNORECASE):
+                    for _m in _re.findall(r'\[SOUNDS?\][^\[|]*', _p, _re.IGNORECASE):
                         sounds_parts.append(_m.strip())
                 amb_text = ' '.join(sounds_parts) if sounds_parts else "ambient background sounds"
                 amb_cond = clip.encode_from_tokens_scheduled(clip.tokenize(amb_text))

@@ -816,6 +816,8 @@ class TimelineEditor {
     this.node = node;
     this.container = container;
     this.domWidget = domWidget;
+    this.isV2_5 = !!(node && (node.type === "MuseDirectorSamplerV2_5" || node.comfyClass === "MuseDirectorSamplerV2_5"));
+    this._lastPromptWidgetSegIds = [];
 
     // Track heights (dynamic)
     this.rulerHeight = RULER_HEIGHT;
@@ -3031,6 +3033,7 @@ class TimelineEditor {
     globalPropContainer.appendChild(globalPropResizer);
 
     const propResizer = document.createElement("div");
+    this.propResizer = propResizer;
     propResizer.style.position = "absolute";
     propResizer.style.bottom = "0px";
     propResizer.style.left = "0px";
@@ -3128,6 +3131,23 @@ class TimelineEditor {
         saveTimeout = setTimeout(triggerAutoSave, 300);
       }
     });
+
+    // --- Segment Prompt Box List (V2.5 only): visual side-by-side boxes,
+    // appended after globalPropContainer below (so it renders at the very
+    // bottom, under Global Prompt) — backed by the real, hidden
+    // segment_override_N widgets for the actual wiring mechanism.
+    this.segBoxListContainer = document.createElement("div");
+    this.segBoxListContainer.className = "pr-segbox-list";
+    this.segBoxListContainer.style.width = "100%";
+    this.segBoxListContainer.style.height = "110px";
+    this.segBoxListContainer.style.display = "none";
+    this.segBoxListContainer.style.flexDirection = "row";
+    this.segBoxListContainer.style.gap = "8px";
+    this.segBoxListContainer.style.overflowX = "auto";
+    this.segBoxListContainer.style.overflowY = "hidden";
+    this.segBoxListContainer.style.alignItems = "stretch";
+    this.segBoxListContainer.style.boxSizing = "border-box";
+    this.segBoxListContainer.style.marginTop = "8px";
 
     // --- Motion Info Area ---
     this.motionInfoArea = document.createElement("div");
@@ -3954,6 +3974,7 @@ class TimelineEditor {
     this.wrapper.appendChild(controlsGroup);
     this.wrapper.appendChild(propContainer);
     this.wrapper.appendChild(this.globalPropContainer);
+    if (this.isV2_5) this.wrapper.appendChild(this.segBoxListContainer);
 
     this.container.appendChild(this.wrapper);
   }
@@ -5621,7 +5642,147 @@ class TimelineEditor {
     }
   }
 
+  // V2.5 only: the real "segment_override_N" widgets (plain multiline STRING,
+  // declared in Python — not forceInput) exist purely so ComfyUI's standard
+  // "Convert to Input" mechanism works for wiring. Their own native row is
+  // ALWAYS kept hidden — the visible/editable UI is the custom side-by-side
+  // box list below (segBoxListContainer), kept in sync with each widget's
+  // value. Strict 1-to-1 with segment count: exactly as many boxes as
+  // segments, never more, matching the current segment set exactly.
+  // V2.5 only, one-time cleanup: some widget-linked inputs on this node have
+  // a stale cached .pos left over from before today's work that happens to
+  // exactly collide with another input's position (confirmed: "seed_hunt"
+  // colliding with "custom_width"). Clear any input's .pos that exactly
+  // matches another's, so LiteGraph recomputes a fresh, non-overlapping
+  // default position for it instead of drawing two dots on top of each other.
+  _fixCollidingInputPositions() {
+    if (!this.node || !this.node.inputs) return;
+    try {
+      const seen = new Map(); // "x,y" -> first input with that pos
+      for (const inp of this.node.inputs) {
+        if (!inp.pos) continue;
+        const key = inp.pos[0] + "," + inp.pos[1];
+        if (seen.has(key)) {
+          console.warn("[MuseDirector V2.5] clearing colliding cached position on", inp.name || inp.widget?.name, "(matched", seen.get(key), ")");
+          delete inp.pos;
+        } else {
+          seen.set(key, inp.name || inp.widget?.name);
+        }
+      }
+    } catch (err) {
+      console.warn("[MuseDirector V2.5] collision cleanup failed:", err);
+    }
+  }
+
+  syncSegmentPromptWidgets() {
+    if (!this.isV2_5 || !this.node || !this.node.widgets) return;
+    if (!this._didFixCollisions) {
+      this._didFixCollisions = true;
+      this._fixCollidingInputPositions();
+    }
+    const sorted = [...this.timeline.segments].sort((a, b) => a.start - b.start);
+    const MAX = 4;
+
+    if (!this._lastPromptWidgetSegIds) this._lastPromptWidgetSegIds = [];
+
+    const ids = sorted.map(s => s.id).join(",");
+    const structureChanged = this._lastSegBoxIds !== ids;
+    this._lastSegBoxIds = ids;
+
+    if (structureChanged && this.segBoxListContainer) {
+      this.segBoxListContainer.innerHTML = "";
+      this._segBoxRows = [];
+    }
+
+    for (let n = 1; n <= MAX; n++) {
+      const name = `segment_override_${n}`;
+      const w = this.node.widgets.find(x => x.name === name);
+      if (!w) continue;
+
+      const segIdx = n - 1;
+      const seg = sorted[segIdx];
+
+      // Deliberately simple from here down: the widget is never hidden,
+      // never removed, never repositioned. It's just a plain, normal
+      // ComfyUI widget at whatever position it naturally sits — always
+      // present regardless of segment count. Every prior attempt to make
+      // this dynamic (hide/remove/reposition based on segment count) caused
+      // more problems than it solved, so this deliberately does none of that.
+      if (!seg) {
+        this._lastPromptWidgetSegIds[segIdx] = null;
+        continue;
+      }
+
+      // Only push the segment's stored prompt into the widget when THIS
+      // specific slot's segment identity actually changed — never on every
+      // sync, so we don't clobber live typing.
+      const idChanged = this._lastPromptWidgetSegIds[segIdx] !== seg.id;
+      if (idChanged) {
+        w.value = seg.prompt || "";
+      }
+      this._lastPromptWidgetSegIds[segIdx] = seg.id;
+
+      if (!w._museHooked) {
+        w._museHooked = true;
+        const origCallback = w.callback;
+        w.callback = (val, ...rest) => {
+          if (origCallback) origCallback.call(w, val, ...rest);
+          const liveSorted = [...this.timeline.segments].sort((a, b) => a.start - b.start);
+          const liveSeg = liveSorted[segIdx];
+          if (liveSeg) {
+            liveSeg.prompt = val;
+            this.commitChanges(true);
+          }
+        };
+      }
+
+      if (structureChanged && this.segBoxListContainer) {
+        const row = document.createElement("div");
+        row.className = "pr-segbox-row";
+        row.style.paddingLeft = "8px";
+        row.style.position = "relative";
+        row.style.flex = "1 1 0";
+        row.style.minWidth = "160px";
+        row.style.height = "100%";
+        row.style.background = "#222";
+        row.style.border = "1px solid #111";
+        row.style.borderRadius = "6px";
+        row.style.boxSizing = "border-box";
+
+        const label = document.createElement("div");
+        label.className = "pr-prompt-label";
+        label.textContent = `Segment ${n} Prompt`;
+        row.appendChild(label);
+
+        const box = document.createElement("textarea");
+        box.className = "pr-prompt-area";
+        box.value = w.value || "";
+        box.placeholder = `Enter prompt for segment ${n}...`;
+        box.style.width = "100%";
+        box.style.boxSizing = "border-box";
+        box.addEventListener("input", () => {
+          w.value = box.value;
+          if (w.callback) w.callback(box.value);
+        });
+        row.appendChild(box);
+
+        this.segBoxListContainer.appendChild(row);
+        this._segBoxRows.push({ segIdx, row, box, widget: w });
+      }
+    }
+
+    if (this.node.computeSize) {
+      const sz = this.node.computeSize();
+      this.node.size[1] = sz[1];
+    }
+    if (this.node.setDirtyCanvas) this.node.setDirtyCanvas(true, true);
+  }
+
   updateUIFromSelection() {
+    this.syncSegmentPromptWidgets();
+    // Always visible for V2.5 — not tied to selectionType at all, so it stays
+    // shown regardless of which branch below runs (audio/motion/normal/retake).
+    if (this.isV2_5 && this.segBoxListContainer) this.segBoxListContainer.style.display = "flex";
     if (this.selectedSegmentIds && this.isMultiSelectActive()) {
       if (this.globalPromptInput) {
         this.globalPromptInput.disabled = true;
@@ -5807,7 +5968,17 @@ class TimelineEditor {
       }
       this.audioInfoArea.style.display = "none";
       this.motionInfoArea.style.display = "none";
-      if (this.promptWrapper) this.promptWrapper.style.display = "block";
+      if (this.isV2_5 && this.selectionType === "image") {
+        // V2.5: per-segment prompts are edited via the always-visible box list
+        // below (segBoxListContainer) instead of this shared selection-driven box.
+        // Also hide its resize handle — otherwise it's left behind as an empty
+        // draggable strip with nothing above it to resize.
+        if (this.promptWrapper) this.promptWrapper.style.display = "none";
+        if (this.propResizer) this.propResizer.style.display = "none";
+      } else {
+        if (this.promptWrapper) this.promptWrapper.style.display = "block";
+        if (this.propResizer) this.propResizer.style.display = "flex";
+      }
       this.strengthRow.style.display = "flex";
       this.strengthLabel.style.display = "inline";
       this.strengthLabel.textContent = "Guide Strength:";
@@ -11628,7 +11799,7 @@ const APPENDED_WIDGET_DEFAULTS = [
 app.registerExtension({
   name: "MuseCollective.LTXTimelineV2",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name === "MuseDirectorSamplerV2") {
+    if (nodeData.name === "MuseDirectorSamplerV2" || nodeData.name === "MuseDirectorSamplerV2_5") {
 
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
@@ -11788,7 +11959,17 @@ app.registerExtension({
           const propH = self._timelineEditor ? (self._timelineEditor.propHeight || 90) : 90;
           const globalPropH = self._timelineEditor ? (self._timelineEditor.globalPropHeight || 60) : 60;
           const nodeWidth = self.size?.[0] || width || 1375;
-          return [Math.max(10, nodeWidth - 30), canvasH + propH + globalPropH + 160];
+          const formulaHeight = canvasH + propH + globalPropH + 160;
+          // V2.5: measure the actual rendered wrapper height directly instead
+          // of guessing at an additive constant for the box list — the DOM's
+          // own real height is the source of truth, not an estimate of it.
+          if (self._timelineEditor?.isV2_5 && self._timelineEditor.wrapper) {
+            const measured = self._timelineEditor.wrapper.scrollHeight;
+            if (measured > 0) {
+              return [Math.max(10, nodeWidth - 30), Math.max(formulaHeight, measured + 20)];
+            }
+          }
+          return [Math.max(10, nodeWidth - 30), formulaHeight];
         };
 
         setTimeout(() => {
